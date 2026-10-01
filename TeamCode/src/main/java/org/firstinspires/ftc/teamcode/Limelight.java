@@ -42,6 +42,9 @@ public class Limelight extends LinearOpMode {
 //                if(result.getTx()>0){
 //                    turnLeft();
 //                }
+//                else if(result.getTx()<0){
+//                    turnRight();
+//                }
 
                 telemetry.addData("TX", result.getTx());
                 telemetry.addData("TY", result.getTy());

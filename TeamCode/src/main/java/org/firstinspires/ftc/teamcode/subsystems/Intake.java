@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 @Config
 @TeleOp
 public class Intake extends OpMode {
-    private static DcMotorEx intake, transfer, shooter;
+    private static DcMotorEx intake;
     public void init(){
         intake = hardwareMap.get(DcMotorEx.class, "intakeMotor");
     }
@@ -24,6 +24,10 @@ public class Intake extends OpMode {
     }
     public double getPower(){
         return intake.getPower();
+    }
+
+    public double getVelocity(){
+        return intake.getVelocity();
     }
 
 }
