@@ -74,11 +74,25 @@ public class Shooter extends OpMode {
                 if(gamepad1.right_trigger<.3){
                     currentState = SHOOTER_STATES.INACTIVE;
                 }
+                if(gamepad1.left_trigger_pressed){
+                    shooterN.setPower(-1);
+                    shooterP.setPower(-1);
+                    intake.setPower(-1);
+                    transfer.setPower(-1);
+                    currentState = SHOOTER_STATES.INACTIVE;
+                }
                 break;
             case SHOOT:
                 intake.setPower(1);
                 transfer.setPower(1.0);
                 if(gamepad1.right_trigger<.3){
+                    currentState = SHOOTER_STATES.INACTIVE;
+                }
+                if(gamepad1.left_trigger_pressed){
+                    shooterN.setPower(-1);
+                    shooterP.setPower(-1);
+                    intake.setPower(-1);
+                    transfer.setPower(-1);
                     currentState = SHOOTER_STATES.INACTIVE;
                 }
                 break;
