@@ -19,13 +19,18 @@ import com.qualcomm.robotcore.hardware.CRServo;
 @TeleOp
 public class Transfer extends OpMode
 {
-    private CRServo transferServo;
+    private CRServo transferN, transferP;
+    private DcMotorEx transferM;
+
 
     @Override
     public void init()
     {
-        transferServo = hardwareMap.get(CRServo.class, "transfer");
-        transferServo.setDirection(DcMotorSimple.Direction.REVERSE);
+        transferM = hardwareMap.get(DcMotorEx.class, "motorT");
+        transferN = hardwareMap.get(CRServo.class, "transferN");
+        transferP = hardwareMap.get(CRServo.class, "transferP");
+
+
     }
 
     @Override
@@ -37,10 +42,21 @@ public class Transfer extends OpMode
     public void setPower(double power){
         if(power>1.0)power=1.0;
         if(power<-1.0)power=-1.0;
-        transferServo.setPower(power);
+        transferM.setPower(power);
+        transferP.setPower(power);
+        transferN.setPower(power);
+
     }
-    public double getPower(){
-        return transferServo.getPower();
+    public double getTransferNPower(){
+        return transferN.getPower();
+    }
+
+    public double getTransferMPower(){
+        return transferM.getPower();
+    }
+
+    public double getTransferPPower(){
+        return transferP.getPower();
     }
 
 

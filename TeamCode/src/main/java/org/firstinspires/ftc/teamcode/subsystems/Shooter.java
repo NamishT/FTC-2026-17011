@@ -18,14 +18,13 @@ public class Shooter extends OpMode {
     private static DcMotorEx shooterP;
     private static DcMotorEx shooterN;
 
-    private Intake intake;
-    private Transfer transfer;
+    private Intake intake = new Intake();
+    private Transfer transfer = new Transfer();
 
     public enum SHOOTER_STATES{
         INACTIVE,
         SPIN_UP,
         SHOOT,
-        END,
 
     }
     public SHOOTER_STATES currentState = SHOOTER_STATES.INACTIVE;
@@ -46,6 +45,8 @@ public class Shooter extends OpMode {
     public void loop(){
 
     }
+
+
     public void shooting_machine(){
         switch(currentState) {
             case INACTIVE:
@@ -53,6 +54,16 @@ public class Shooter extends OpMode {
                 shooterP.setPower(0);
                 intake.setPower(0);
                 transfer.setPower(0);
+                if(gamepad1.right_trigger_pressed){
+                    currentState=SHOOTER_STATES.SPIN_UP;
+                }
+                if(gamepad1.left_trigger_pressed){
+                    shooterN.setPower(-1);
+                    shooterP.setPower(-1);
+                    intake.setPower(-1);
+                    transfer.setPower(-1);
+
+                }
                 break;
             case SPIN_UP:
                 shooterN.setVelocity(velocityN);
@@ -60,19 +71,18 @@ public class Shooter extends OpMode {
                 if(shooterN.getVelocity()==velocityN&&shooterP.getVelocity()==velocityP){
                     currentState = SHOOTER_STATES.SHOOT;
                 }
+                if(gamepad1.right_trigger<.3){
+                    currentState = SHOOTER_STATES.INACTIVE;
+                }
                 break;
             case SHOOT:
                 intake.setPower(1);
                 transfer.setPower(1.0);
                 if(gamepad1.right_trigger<.3){
-                    currentState = SHOOTER_STATES.END;
+                    currentState = SHOOTER_STATES.INACTIVE;
                 }
                 break;
-            case END:
-                shooterN.setPower(0);
-                shooterP.setPower(0);
-                intake.setPower(0);
-                transfer.setPower(0);
+
         }
     }
 }
