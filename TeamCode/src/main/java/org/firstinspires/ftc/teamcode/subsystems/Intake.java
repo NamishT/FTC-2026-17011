@@ -4,20 +4,15 @@ import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
-@Config
-@TeleOp
-public class Intake extends OpMode {
+public class Intake{
     private static DcMotorEx intake, leftIntake , rightIntake;
-    public void init(){
+
+    public Intake(HardwareMap hardwareMap){
         intake = hardwareMap.get(DcMotorEx.class, "intakeMotor");
         leftIntake = hardwareMap.get(DcMotorEx.class, "miniIntakeWheel1");
         rightIntake = hardwareMap.get(DcMotorEx.class, "miniIntakeWheel2");
-
-    }
-    public void loop(){
-
-
     }
 
     public void setPower(double power){

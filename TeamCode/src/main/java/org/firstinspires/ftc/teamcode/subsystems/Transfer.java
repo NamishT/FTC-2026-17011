@@ -12,32 +12,21 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.CRServo;
 
 @Config
 @TeleOp
-public class Transfer extends OpMode
-{
+public class Transfer{
     private CRServo transferN, transferP;
 
 
-
-    @Override
-    public void init()
-    {
-
+    public Transfer(HardwareMap hardwareMap){
         transferN = hardwareMap.get(CRServo.class, "transferN");
         transferP = hardwareMap.get(CRServo.class, "transferP");
-
-
     }
 
-    @Override
-    public void loop()
-    {
-
-    }
 
     public void setPower(double power){
         if(power>1.0)power=1.0;

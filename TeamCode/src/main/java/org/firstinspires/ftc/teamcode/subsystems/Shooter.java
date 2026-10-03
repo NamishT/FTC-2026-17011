@@ -8,29 +8,18 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
-@Config
-@TeleOp
-public class Shooter extends OpMode {
 
-    private double velocityN = 1000;
-    private double velocityP = 1000;
+public class Shooter {
+
+
     private static DcMotorEx shooterP;
     private static DcMotorEx shooterN;
+    
 
-    private Intake intake = new Intake();
-    private Transfer transfer = new Transfer();
 
-    public enum SHOOTER_STATES{
-        INACTIVE,
-        SPIN_UP,
-        SHOOT,
-
-    }
-    public SHOOTER_STATES currentState = SHOOTER_STATES.INACTIVE;
-
-    @Override
-    public void init(){
+    public Shooter(HardwareMap hardwareMap){
         shooterP = hardwareMap.get(DcMotorEx.class, "shooterP");
         shooterN= hardwareMap.get(DcMotorEx.class, "shooterN");
 
@@ -41,62 +30,25 @@ public class Shooter extends OpMode {
         shooterN.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
-    @Override
-    public void loop(){
+    public void setPower(double power){
+        if(power>1.0)power=1.0;
+        if(power<-1.0) power = -1.0;
+        shooterP.setPower(power);
+        shooterN.setPower(power);
 
+    }
+    public void setVelocity(double velocity){
+        shooterP.setVelocity(velocity);
+        shooterN.setVelocity(velocity);
+    }
+
+    public double getVelocityN(){
+        return shooterN.getVelocity();
+    }
+    public double getVelocityP(){
+        return shooterP.getVelocity();
     }
 
 
-    public void shooting_machine(){
-        switch(currentState) {
-            case INACTIVE:
-                shooterN.setPower(0);
-                shooterP.setPower(0);
-                intake.setPower(0);
-                transfer.setPower(0);
-                if(gamepad1.right_trigger_pressed){
-                    currentState=SHOOTER_STATES.SPIN_UP;
-                }
-                if(gamepad1.left_trigger_pressed){
-                    shooterN.setPower(-1);
-                    shooterP.setPower(-1);
-                    intake.setPower(-1);
-                    transfer.setPower(-1);
 
-                }
-                break;
-            case SPIN_UP:
-                shooterN.setVelocity(velocityN);
-                shooterP.setVelocity(velocityP);
-                if(shooterN.getVelocity()==velocityN&&shooterP.getVelocity()==velocityP){
-                    currentState = SHOOTER_STATES.SHOOT;
-                }
-                if(gamepad1.right_trigger<.3){
-                    currentState = SHOOTER_STATES.INACTIVE;
-                }
-                if(gamepad1.left_trigger_pressed){
-                    shooterN.setPower(-1);
-                    shooterP.setPower(-1);
-                    intake.setPower(-1);
-                    transfer.setPower(-1);
-                    currentState = SHOOTER_STATES.INACTIVE;
-                }
-                break;
-            case SHOOT:
-                intake.setPower(1);
-                transfer.setPower(1.0);
-                if(gamepad1.right_trigger<.3){
-                    currentState = SHOOTER_STATES.INACTIVE;
-                }
-                if(gamepad1.left_trigger_pressed){
-                    shooterN.setPower(-1);
-                    shooterP.setPower(-1);
-                    intake.setPower(-1);
-                    transfer.setPower(-1);
-                    currentState = SHOOTER_STATES.INACTIVE;
-                }
-                break;
-
-        }
-    }
 }
