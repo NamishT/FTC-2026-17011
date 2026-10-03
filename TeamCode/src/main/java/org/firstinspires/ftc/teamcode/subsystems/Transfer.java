@@ -16,8 +16,7 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.CRServo;
 
-@Config
-@TeleOp
+
 public class Transfer{
     private CRServo transferN, transferP;
 
@@ -25,6 +24,8 @@ public class Transfer{
     public Transfer(HardwareMap hardwareMap){
         transferN = hardwareMap.get(CRServo.class, "transferN");
         transferP = hardwareMap.get(CRServo.class, "transferP");
+
+        transferP.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
 

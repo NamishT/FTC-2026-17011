@@ -16,18 +16,26 @@ public class Shooter {
 
     private static DcMotorEx shooterP;
     private static DcMotorEx shooterN;
-    
 
+    public static double P = 150;
+    public static double I = 0;
+    public static double D = .5;
+    public static double F = 15;
 
     public Shooter(HardwareMap hardwareMap){
+
+
         shooterP = hardwareMap.get(DcMotorEx.class, "shooterP");
         shooterN= hardwareMap.get(DcMotorEx.class, "shooterN");
 
         shooterP.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         shooterN.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
-        shooterP.setDirection(DcMotorSimple.Direction.REVERSE);
+        shooterP.setDirection(DcMotorSimple.Direction.FORWARD);
         shooterN.setDirection(DcMotorSimple.Direction.REVERSE);
+
+        shooterP.setVelocityPIDFCoefficients(P, I, D, F);
+        shooterN.setVelocityPIDFCoefficients(P, I, D, F);
     }
 
     public void setPower(double power){
@@ -37,10 +45,14 @@ public class Shooter {
         shooterN.setPower(power);
 
     }
-    public void setVelocity(double velocity){
+    public void setVelocityP(double velocity){
         shooterP.setVelocity(velocity);
+    }
+
+    public void setVelocityN(double velocity){
         shooterN.setVelocity(velocity);
     }
+
 
     public double getVelocityN(){
         return shooterN.getVelocity();
