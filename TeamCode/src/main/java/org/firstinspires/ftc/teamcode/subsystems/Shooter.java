@@ -42,7 +42,7 @@ public class Shooter {
         if(power>1.0)power=1.0;
         if(power<-1.0) power = -1.0;
         shooterP.setPower(power);
-        shooterN.setPower(power);
+        //shooterN.setPower(power);
 
     }
     public void setVelocityP(double velocity){

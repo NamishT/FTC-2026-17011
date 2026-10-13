@@ -11,8 +11,13 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+
+import com.pedropathing.revhub.localizers.PinpointLocalizer;
+import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 @Config
 @TeleOp
@@ -22,6 +27,8 @@ public class Teleop extends OpMode {
     Transfer transfer;
     Shooter shooter;
     Intake intake;
+
+    PinpointLocalizer localizer;
 
     private double velocityN = 1100;
     private double velocityP = 1100;
@@ -39,6 +46,7 @@ public class Teleop extends OpMode {
     public SHOOTER_STATES currentState = SHOOTER_STATES.INACTIVE;
     @Override
     public void init(){
+        localizer = new PinpointLocalizer(hardwareMap, Constants.localizerConfig);
         dash = FtcDashboard.getInstance();
         myTe = new MultipleTelemetry(dash.getTelemetry(), telemetry);
 
@@ -58,7 +66,12 @@ public class Teleop extends OpMode {
         shooting_machine();
         myTe.addData("Pollen Velocity", shooter.getVelocityP());
         myTe.addData("Nectar Velocity", shooter.getVelocityN());
-        myTe.update();
+
+        localizer.update();
+
+        myTe.addData("X", localizer.pose().x());
+        myTe.addData("Y", localizer.pose().y());
+        telemetry.update();
 
     }
     public void shooting_machine(){
@@ -87,9 +100,9 @@ public class Teleop extends OpMode {
                 break;
             case SPIN_UP:
                 shooter.setVelocityP(velocityP);
-                shooter.setVelocityN(velocityN);
+                //shooter.setVelocityN(velocityN);
 
-                if(shooter.getVelocityN()>=.98*velocityN&&shooter.getVelocityP()>=.98*velocityP){
+                if(shooter.getVelocityN()>=.98*velocityN||shooter.getVelocityP()>=.98*velocityP){
                     currentState = SHOOTER_STATES.SHOOT;
                 }
 
