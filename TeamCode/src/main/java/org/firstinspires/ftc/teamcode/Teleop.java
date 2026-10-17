@@ -1,10 +1,8 @@
 package org.firstinspires.ftc.teamcode;
-
 import org.firstinspires.ftc.teamcode.subsystems.Drivebase;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Transfer;
-
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -12,10 +10,12 @@ import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-
 import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
@@ -32,6 +32,9 @@ public class Teleop extends OpMode {
 
     private double velocityN = 1100;
     private double velocityP = 1100;
+
+    private GoBildaPinpointDriver pinpoint;
+    //private Limelight3A limelight;
 
     public enum SHOOTER_STATES{
         INACTIVE,
@@ -67,11 +70,64 @@ public class Teleop extends OpMode {
         myTe.addData("Pollen Velocity", shooter.getVelocityP());
         myTe.addData("Nectar Velocity", shooter.getVelocityN());
 
+        pinpoint = hardwareMap.get(
+                GoBildaPinpointDriver.class, "pinpoint"
+        );
+
+//        limelight = hardwareMap.get(
+//                Limelight3A.class, "limelight"
+//        );
+//
+//        limelight.pipelineSwitch(0);
+//        limelight.start();
+
         localizer.update();
 
         myTe.addData("X", localizer.pose().x());
         myTe.addData("Y", localizer.pose().y());
         telemetry.update();
+
+        pinpoint.update();
+
+        double heading = pinpoint.getPosition()
+                .getHeading(AngleUnit.DEGREES);
+
+//        LLResult result = limelight.getLatestResult();
+//
+//        if (result != null && result.isValid()
+//                && !result.getFiducialResults().isEmpty()) {
+//
+//            LLResultTypes.FiducialResult tag =
+//                    result.getFiducialResults().get(0);
+//
+//            double targetX = tag.getTargetXDegrees();
+//
+//            myTe.addData("AprilTag ID", tag.getFiducialId());
+//            myTe.addData("Target X", targetX);
+//        } else {
+//            myTe.addData("AprilTag", "Not detected");
+//        }
+//
+//        myTe.addData("Pinpoint Heading", heading);
+//        myTe.update();
+//
+//        if (gamepad1.a) {
+//
+//
+//            boolean aimed = drivebase.aimAtAprilTag(result);
+//
+//            telemetry.addData("Aimed", aimed);
+//        } else {
+//            // Normal manual driving
+//            drivebase.drive(
+//                    -gamepad1.left_stick_y,
+//                    gamepad1.left_stick_x,
+//                    gamepad1.right_stick_x
+//            );
+//        }
+//
+//        telemetry.addData("Pinpoint Heading", heading);
+//        telemetry.update();
 
     }
     public void shooting_machine(){

@@ -1,36 +1,39 @@
+
 package org.firstinspires.ftc.teamcode.subsystems;
 
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
-import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
+import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.IMU;
-
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-
-
 
 public class Drivebase {
 
     // Declare motors
-    private static DcMotor frontLeft, frontRight, backLeft, backRight;
-    private SparkFunOTOS otos;
+    private DcMotor frontLeft, frontRight, backLeft, backRight;
+    private GoBildaPinpointDriver pinpoint;
+//    private Limelight3A limelight;
+
     private double offset = 0;
     private double IMUheadingTracker = 0;
+
+    private static final double AIM_KP = 0.02;
+    private static final double AIM_MAX_POWER = 0.30;
+    private static final double AIM_MIN_POWER = 0.08;
+    private static final double AIM_TOLERANCE = 1.0; // degrees
 
     private double TX = 0;
 
     // Constructor
     public Drivebase(HardwareMap hardwareMap) {
         // Initialize motors
-        frontLeft  = hardwareMap.get(DcMotor.class, "frontLeft");
+        frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
         frontRight = hardwareMap.get(DcMotor.class, "frontRight");
-        backLeft   = hardwareMap.get(DcMotor.class, "backLeft");
-        backRight  = hardwareMap.get(DcMotor.class, "backRight");
+        backLeft = hardwareMap.get(DcMotor.class, "backLeft");
+        backRight = hardwareMap.get(DcMotor.class, "backRight");
 
-        // Motor directions (adjust if your robot moves backwards/sideways)
+        // Motor directions
         frontLeft.setDirection(DcMotor.Direction.FORWARD);
         backLeft.setDirection(DcMotor.Direction.FORWARD);
         frontRight.setDirection(DcMotor.Direction.REVERSE);
@@ -42,34 +45,31 @@ public class Drivebase {
         backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-//        otos = hardwareMap.get(SparkFunOTOS.class, "otos");
-//        otos.setAngularUnit(AngleUnit.RADIANS);
-//        SparkFunOTOS.Pose2D offset = new SparkFunOTOS.Pose2D(0, 0, Math.PI);
-//        otos.setOffset(offset);
-//        otos.setAngularScalar(.98946);
-//        otos.resetTracking();
-//        otos.calibrateImu();
-//
-//        TX = 0;
-    }
+        // Initialize Pinpoint
+        pinpoint = hardwareMap.get(
+                GoBildaPinpointDriver.class, "pinpoint"
+        );
 
+        // Initialize Limelight
+//        limelight = hardwareMap.get(
+//                Limelight3A.class, "limelight"
+//        );
+//
+//        limelight.pipelineSwitch(0);
+//        limelight.start();
+    }
 
     public void offsetYaw(double offset) {
         this.offset = Math.toRadians(offset);
     }
 
-    // Field-centric drive
+    // Mecanum drive
     public void drive(double drive, double strafe, double turn) {
-        // Get current heading
-//        double botHeading = SoftElectronics.getYaw() + offset;
-//        double botHeading = otos.getPosition().h;
-//        IMUheadingTracker = botHeading;
-//
-//        // Rotate joystick input to be field-centric
-//        double strafe = strafe * Math.cos(-botHeading) - drive * Math.sin(-botHeading);
-//        double drive = strafe * Math.sin(-botHeading) + drive * Math.cos(-botHeading);
+        double denominator = Math.max(
+                Math.abs(drive) + Math.abs(strafe) + Math.abs(turn),
+                1.0
+        );
 
-        double denominator = Math.max(Math.abs(drive) + Math.abs(strafe) + Math.abs(turn), 1);
         double frontLeftPower = (drive + strafe + turn) / denominator;
         double backLeftPower = (drive - strafe + turn) / denominator;
         double frontRightPower = (drive - strafe - turn) / denominator;
@@ -79,64 +79,63 @@ public class Drivebase {
         frontRight.setPower(frontRightPower);
         backLeft.setPower(backLeftPower);
         backRight.setPower(backRightPower);
-
-//         Combine the joystick requests for each axis-motion to determine each wheel's power.
-//         Set up a variable for each drive wheel to save the power level for telemetry.
-//        double frontLeftPower  = drive + strafe + turn;
-//        double frontRightPower = drive - strafe - turn;
-//        double backLeftPower   = drive - strafe + turn;
-//        double backRightPower  = drive + strafe - turn;
-//
-//
-//        // Send calculated power to wheels
-//        frontLeft.setPower(frontLeftPower);
-//        frontRight.setPower(frontRightPower);
-//        backLeft.setPower(backLeftPower);
-//        backRight.setPower(backRightPower);
     }
 
-
-    public void setPosition(SparkFunOTOS.Pose2D pose) {
-        otos.setPosition(pose);
-    }
-
-
-    public void turnToGoal (boolean onBlueAlliance, LLResult llResult) {
-        double botHeading = Math.toDegrees(otos.getPosition().h);
-        if (llResult.isValid())
-            TX = llResult.getFiducialResults().get(0).getTargetXDegrees();
-
-        if (onBlueAlliance) {
-            if (!llResult.isValid()) {
-                if (botHeading < 44 && botHeading > -135) {
-                    drive(0, 0, -.5 * (Math.abs(45 - botHeading) / 10));
-                } else {
-                    drive(0, 0, .5 * (Math.abs(45 - botHeading) / 10));
-                }
-            } else if (botHeading > 24 && botHeading < 64) {
-                if (TX < -.5) {
-                    drive(0, 0, -.5 * (Math.abs(TX) / 50));
-                } else if (TX > .5) {
-                    drive(0, 0, .5 * (Math.abs(TX) / 50));
-                }
-            }
-        } else {
-            if (!llResult.isValid()) {
-                if (botHeading > -44 && botHeading < 135) {
-                    drive(0, 0, .5 * (Math.abs(-45 - botHeading) / 10));
-                } else {
-                    drive(0, 0, -.5 * (Math.abs(-45 - botHeading) / 10));
-                }
-            } else if (botHeading < -24 && botHeading > -64) {
-                if (TX < -.5) {
-                    drive(0, 0, -.5 * (Math.abs(TX) / 50));
-                } else if (TX > .5) {
-                    drive(0, 0, .5 * (Math.abs(TX) / 50));
-                }
-            }
+    // Aim at a visible AprilTag using Limelight
+    public boolean aimAtAprilTag(LLResult result) {
+        if (result == null || !result.isValid()) {
+            stop();
+            return false;
         }
+
+        if (result.getFiducialResults() == null
+                || result.getFiducialResults().isEmpty()) {
+            stop();
+            return false;
+        }
+
+        // Get horizontal angle to the first detected AprilTag
+        LLResultTypes.FiducialResult tag =
+                result.getFiducialResults().get(0);
+
+        TX = tag.getTargetXDegrees();
+
+        // Stop turning when the tag is centered
+        if (Math.abs(TX) <= AIM_TOLERANCE) {
+            stop();
+            return true;
+        }
+
+        // Calculate proportional turn power
+        double turn = AIM_KP * TX;
+
+        // Limit turning power
+        turn = Math.max(-AIM_MAX_POWER,
+                Math.min(AIM_MAX_POWER, turn));
+
+        // Ensure enough power to start rotating
+        if (Math.abs(turn) < AIM_MIN_POWER) {
+            turn = Math.copySign(AIM_MIN_POWER, turn);
+        }
+
+        // If it turns away from the target, reverse the sign:
+        // drive(0, 0, -turn);
+        drive(0, 0, turn);
+
+        return false;
     }
 
+    // Update Pinpoint and return heading in degrees
+    public double getBotHeading() {
+        pinpoint.update();
+        return pinpoint.getPosition().getHeading(
+                org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES
+        );
+    }
+
+    public double getTargetX() {
+        return TX;
+    }
 
     // Stop all motors
     public void stop() {
@@ -144,18 +143,5 @@ public class Drivebase {
         frontRight.setPower(0);
         backLeft.setPower(0);
         backRight.setPower(0);
-    }
-
-
-    public SparkFunOTOS.Pose2D getPosition() {
-        return otos.getPosition();
-    }
-
-    public double getBotHeading() {
-        return IMUheadingTracker;
-    }
-
-    public double getOffset() {
-        return offset;
     }
 }
