@@ -74,7 +74,13 @@ public class Teleop extends OpMode {
             }
             if (gamepad1.right_trigger > 0.3||gamepad2.right_trigger>0.3) {
                 if (shooter.getVelocityP() >= (velocityPTarget * 0.98)) {
-                    while(drivebase.turnToAprilTag(alliance)){}
+                    boolean go = true;
+                    while(go){
+                        go = drivebase.turnToAprilTag(alliance);
+                        if(gamepad1.right_trigger<.3){
+                            go = false;
+                        }
+                    }
                     transfer.setPower(-1.0);
                 } else {
                     transfer.setPower(0);
