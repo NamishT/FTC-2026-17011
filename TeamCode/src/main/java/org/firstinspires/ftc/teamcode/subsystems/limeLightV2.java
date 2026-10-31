@@ -1,64 +1,123 @@
+
+
+
 package org.firstinspires.ftc.teamcode.subsystems;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+
+
 import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.Position;
-import java.util.*;
-public class limeLightV2{
+
+
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class limeLightV2 {
+
+
     private Limelight3A limelight;
-    private Pose3D pose;
-    private static int startGame = 1;
-    //  0 = Blue | 1 = Red
-    private int[] redAllianceTags = {34, 35, 36, 37, 30, 31, 32, 33};
-    private int[] blueAllianceTags = {38, 39, 40, 41, 42, 43, 44, 45};
-    private double[][] limeLightList = new double[8][3];
-    public limeLightV2(HardwareMap hardwareMap)
-    {
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+
+
+    private final int[] redAllianceTags =
+            {34, 35, 36, 37, 30, 31, 32, 33};
+
+
+    private final int[] blueAllianceTags =
+            {38, 39, 40, 41, 42, 43, 44, 45};
+
+
+    public limeLightV2(HardwareMap hardwareMap) {
+
+
+        limelight = hardwareMap.get(
+                Limelight3A.class, "limelight");
+
+
         limelight.pipelineSwitch(0);
         limelight.start();
     }
+
+
     public double[][] limeLight(int allianceType) {
+
+
+        List<double[]> detectedTags = new ArrayList<>();
+
+
         LLResult result = limelight.getLatestResult();
+
+
         if (result == null || !result.isValid()) {
             return new double[0][];
         }
-        ArrayList<double[]> tags = new ArrayList<>();
-        for (LLResultTypes.FiducialResult tag : result.getFiducialResults()) {
-            int id = tag.getFiducialId();
-            boolean matches = false;
-            if (allianceType == 1) {
-                for (int type : redAllianceTags) {
-                    if (id == type) {
-                        matches = true;
-                        break;
-                    }
-                }
-            } else if (allianceType == 0) {
-                for (int type : blueAllianceTags) {
-                    if (id == type) {
-                        matches = true;
-                        break;
-                    }
+
+
+        int[] allowedTags;
+
+
+        if (allianceType == 1) {
+            allowedTags = redAllianceTags;
+        } else {
+            allowedTags = blueAllianceTags;
+        }
+
+
+        for (LLResultTypes.FiducialResult tag :
+                result.getFiducialResults()) {
+
+
+            boolean correctAlliance = false;
+
+
+            for (int id : allowedTags) {
+                if (tag.getFiducialId() == id) {
+                    correctAlliance = true;
+                    break;
                 }
             }
-            if (!matches) {
+
+
+            if (!correctAlliance) {
                 continue;
             }
-            Position p = tag.getCameraPoseTargetSpace().getPosition();
+
+
+            Pose3D pose = tag.getCameraPoseTargetSpace();
+
+
+            if (pose == null) {
+                continue;
+            }
+
+
+            Position position = pose.getPosition();
+
+
+            double x = position.x;
+            double y = position.y;
+            double z = position.z;
+
+
             double distance = Math.sqrt(
-                    p.x * p.x + p.y * p.y + p.z * p.
-                            z
+                    x * x + y * y + z * z
             );
-            tags.add(new double[] {
+
+
+            double tx = tag.getTargetXDegrees();
+
+
+            detectedTags.add(new double[]{
                     distance,
-                    tag.getTargetXDegrees(),
-                    id
+                    tx,
+                    tag.getFiducialId()
             });
         }
-        return tags.toArray(new double[0][]);
+
+
+        return detectedTags.toArray(new double[0][]);
     }
 }
