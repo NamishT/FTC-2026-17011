@@ -1,11 +1,10 @@
-
 package org.firstinspires.ftc.teamcode;
 
 
 import org.firstinspires.ftc.teamcode.subsystems.Drivebase;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
-import org.firstinspires.ftc.teamcode.subsystems.Transfer;
+
 
 
 import com.acmerobotics.dashboard.FtcDashboard;
@@ -31,21 +30,23 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 public class Teleop extends OpMode {
 
 
-    Drivebase drivebase;
-    Transfer transfer;
-    Shooter shooter;
-    Intake intake;
+    private Drivebase drivebase;
+    private Shooter shooter;
+    private Intake intake;
 
 
-    PinpointLocalizer localizer;
-    GoBildaPinpointDriver pinpoint;
+    private PinpointLocalizer localizer;
 
 
-    FtcDashboard dash;
+    private GoBildaPinpointDriver pinpoint;
+
+
+    private FtcDashboard dash;
     private Telemetry myTe;
 
 
-    private double velocityPTarget = 1100;
+    public static double velocityNTarget = 1100;
+    public static double velocityPTarget = 3000;
 
 
     // 0 = Blue, 1 = Red
@@ -57,26 +58,33 @@ public class Teleop extends OpMode {
 
 
         localizer = new PinpointLocalizer(
-                hardwareMap, Constants.localizerConfig);
+                hardwareMap,
+                Constants.localizerConfig
+        );
 
 
         pinpoint = hardwareMap.get(
-                GoBildaPinpointDriver.class, "pinpoint");
+                GoBildaPinpointDriver.class,
+                "pinpoint"
+        );
 
 
         dash = FtcDashboard.getInstance();
 
 
         myTe = new MultipleTelemetry(
-                dash.getTelemetry(), telemetry);
+                dash.getTelemetry(),
+                telemetry
+        );
 
 
         intake = new Intake(hardwareMap);
         drivebase = new Drivebase(hardwareMap);
-        transfer = new Transfer(hardwareMap);
         shooter = new Shooter(hardwareMap);
 
 
+        myTe.addLine("TeleOp Initialized");
+        myTe.update();
     }
 
 
@@ -85,11 +93,32 @@ public class Teleop extends OpMode {
 
 
         // Alliance selection
+        /*
         if (gamepad1.xWasPressed()) {
+
             alliance = alliance == 1 ? 0 : 1;
+
+            drivebase.resetAim();
+        }
+        */
+
+
+        if(gamepad2.dpad_up) {
+            intake.setPowerGateOpen();
+        }
+        if(gamepad2.dpad_down) {
+            intake.setPowerGateClose();
+        }
+        if(gamepad2.dpad_left) {
+            intake.openFlush();
+        }
+        if(gamepad2.dpad_right) {
+            intake.closeFlush();
         }
 
 
+
+        /*
         boolean aimRequested =
                 gamepad1.right_trigger > 0.3 ||
                         gamepad2.right_trigger > 0.3;
@@ -100,27 +129,31 @@ public class Teleop extends OpMode {
                         gamepad2.left_trigger > 0.3;
 
 
-        // Normal driving is disabled while aiming
-        if (aimRequested && !reverseRequested) {
-
-
-            drivebase.stopRobot();
-
-
-        } else {
-
-
-            double drive = -gamepad1.left_stick_y;
-            double strafe = gamepad1.left_stick_x;
-            double turn = gamepad1.right_stick_x;
-
-
-            drivebase.drive(drive, strafe, turn);
+        if (!aimRequested) {
+            drivebase.resetAim();
         }
 
 
-        // Run shooting and aiming logic
-        shooting_machine();
+        if (aimRequested || reverseRequested) {
+
+            drivebase.stopRobot();
+
+        } else {
+        */
+
+
+        double drive = -gamepad1.left_stick_y;
+        double strafe = gamepad1.left_stick_x;
+        double turn = gamepad1.right_stick_x;
+
+
+        drivebase.drive(drive, strafe, turn);
+
+        // }
+
+
+        // Shooter, intake, and transfer
+        shooting_machine(false, false);
 
 
         // Update localization
@@ -133,130 +166,126 @@ public class Teleop extends OpMode {
 
 
         // Telemetry
+        /*
         myTe.addData("Alliance",
                 alliance == 1 ? "RED" : "BLUE");
 
 
-        myTe.addData("Shooter Velocity",
-                shooter.getVelocityP());
-
-
-        myTe.addData("X", localizer.pose().x());
-        myTe.addData("Y", localizer.pose().y());
-        myTe.addData("Heading", heading);
-
-
-        myTe.addData("AprilTag Detected",
+        myTe.addData("AprilTag Found",
                 drivebase.hasTarget());
+
+
+        myTe.addData("Camera Valid",
+                drivebase.isCameraValid());
 
 
         myTe.addData("AprilTag TX",
                 drivebase.getTargetTX());
 
 
-        myTe.addData("AprilTag Aligned",
+        myTe.addData("Selected Tag ID",
+                drivebase.getSelectedTagID());
+
+
+        myTe.addData("Aligned",
                 drivebase.isAligned());
+        */
+
+
+        myTe.addData("Shooter Velocity",
+                shooter.getVelocityP());
+
+
+        myTe.addData("Target Velocity",
+                velocityPTarget);
+
+
+        myTe.addData("X",
+                localizer.pose().x());
+
+
+        myTe.addData("Y",
+                localizer.pose().y());
+
+
+        myTe.addData("Heading",
+                heading);
 
 
         myTe.update();
     }
 
 
-    public void shooting_machine() {
+    public void shooting_machine(boolean aimRequested, boolean reverseRequested) {
 
 
-        boolean reverseRequested =
-                gamepad1.left_trigger > 0.3 ||
-                        gamepad2.left_trigger > 0.3;
-
-
-        boolean aimRequested =
-                gamepad1.right_trigger > 0.3 ||
-                        gamepad2.right_trigger > 0.3;
-
-
-        // Reverse intake / shooter
+        /*
+        // Reverse controls
         if (reverseRequested) {
-
-
-            drivebase.stopRobot();
-
 
             shooter.setPower(-1.0);
             intake.setPower(1.0);
-            transfer.setPower(1.0);
-
 
             return;
         }
+        */
 
 
         // Normal shooter velocity control
         if (shooter.getVelocityP() <
                 velocityPTarget * 0.98) {
-
-
-            shooter.setPower(1.0);
-
-
-        } else {
+            shooter.setVelocityP(velocityPTarget);
+        }
+        if(shooter.getVelocityN() < velocityNTarget * 0.98) {
+            shooter.setVelocityN(velocityNTarget);
+        }
+        else {
 
 
             shooter.setVelocityP(velocityPTarget);
         }
 
 
-        // AprilTag aiming
+        /*
+        // Automatic AprilTag aiming
         if (aimRequested) {
-
 
             if (shooter.getVelocityP() >=
                     velocityPTarget * 0.98) {
-
-
                 boolean aligned =
                         drivebase.turnToAprilTag(alliance);
-
-
-                if (aligned) {
-
-
-                    transfer.setPower(-1.0);
-
-
+                if (aligned &&
+                        drivebase.hasTarget()) {
                 } else {
-
-
-                    transfer.setPower(0);
                 }
-
-
             } else {
-
-
                 drivebase.stopRobot();
-                transfer.setPower(0);
             }
 
-
+            intake.setPower(0);
             return;
         }
+        */
 
 
-        // Normal intake operation
-        if (gamepad1.right_bumper ||
-                gamepad2.right_bumper) {
-
-
+        // Manual intake
+        if (gamepad1.right_bumper || gamepad2.right_bumper) {
             intake.setPower(-1.0);
-            transfer.setPower(0);
-
-
-        } else {
-
-
-            intake.setPower(0);
-            transfer.setPower(0);
         }
+        else {
+            intake.setPower(0);
+        }
+    }
+
+
+    @Override
+    public void stop() {
+
+
+        drivebase.stopRobot();
+
+
+        intake.setPower(0);
+        shooter.setPower(0);
     }
 }

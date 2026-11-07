@@ -1,11 +1,18 @@
-package org.firstinspires.ftc.teamcode.pedro;//package org.firstinspires.ftc.teamcode.pedro;
-//
+package org.firstinspires.ftc.teamcode.pedro;
+
+import com.pedropathing.algorithm.Algorithm;
+import com.pedropathing.algorithm.Foresight;
+import com.pedropathing.algorithm.ForesightConfig;
+import com.pedropathing.drivetrain.Drivetrain;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.localization.Localizer;
+import com.pedropathing.revhub.drivetrains.Mecanum;
 import com.pedropathing.revhub.drivetrains.MecanumConfig;
 import com.pedropathing.revhub.localizers.PinpointConfig;
+import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 
@@ -32,7 +39,13 @@ public class Constants {
         c.globalDistanceUnit.set(DistanceUnit.INCH);
         c.offsetUnits.set(DistanceUnit.INCH);
     });
-//    public static Follower create(Localizer localizer) {
-//        return new Follower(drivetrainConfig, localizer, null);
-//    }
+
+    public static ForesightConfig foresightConfig = new ForesightConfig(c -> {});
+
+    public static Follower create(HardwareMap hardwareMap) {
+        Localizer localizer = new PinpointLocalizer(hardwareMap, localizerConfig);
+        Drivetrain drivetrain = new Mecanum(hardwareMap, drivetrainConfig);
+        Algorithm algorithm = new Foresight(foresightConfig);
+        return new Follower(localizer, drivetrain, algorithm);
+    }
 }

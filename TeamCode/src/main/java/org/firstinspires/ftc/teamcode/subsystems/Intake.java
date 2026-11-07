@@ -7,16 +7,26 @@ import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.Servo;
 
 public class Intake{
-    private static DcMotorEx intake ;
-    private static CRServo leftIntake, rightIntake;
-
-
+    private static DcMotorEx rightIntake;
+    private static DcMotorEx leftIntake;
+    private static CRServo gateP;
+    private static Servo gateN;
+    private static CRServo blockN;
+    private static CRServo flushPL;
+    private static CRServo flushPR;
     public Intake(HardwareMap hardwareMap){
-        intake = hardwareMap.get(DcMotorEx.class, "intakeMotor");
-        leftIntake = hardwareMap.get(CRServo.class, "miniIntakeWheel1");
-        rightIntake = hardwareMap.get(CRServo.class, "miniIntakeWheel2");
+        rightIntake = hardwareMap.get(DcMotorEx.class, "rightIntake");
+        leftIntake = hardwareMap.get(DcMotorEx.class, "leftIntake");
+
+        gateP = hardwareMap.get(CRServo.class, "gateP");
+        gateN = hardwareMap.get(Servo.class, "gateN");
+        blockN = hardwareMap.get(CRServo.class, "blockN");
+
+        flushPL = hardwareMap.get(CRServo.class, "flushPL");
+        flushPR = hardwareMap.get(CRServo.class, "flushPR");
 
         rightIntake.setDirection(DcMotorSimple.Direction.REVERSE);
     }
@@ -24,12 +34,26 @@ public class Intake{
     public void setPower(double power){
         if(power>1.0)power=1.0;
         if(power<-1.0) power = -1.0;
-        intake.setPower(power);
-        leftIntake.setPower(power);
         rightIntake.setPower(power);
+        leftIntake.setPower(power);
     }
-    public double getMainIntakePower(){
-        return intake.getPower();
+    public void setPowerGateOpen() {
+        gateP.setPower(1);
+        gateN.setPosition(0);
+        blockN.setPower(1);
+    }
+    public void setPowerGateClose() {
+        gateP.setPower(-1);
+        gateN.setPosition(1.0);
+        blockN.setPower(-1);
+    }
+    public void openFlush(){
+        flushPL.setPower(-1);
+        flushPR.setPower(-1);
+    }
+    public void closeFlush(){
+        flushPL.setPower(1);
+        flushPR.setPower(1);
     }
     public double getRightIntakePower(){
         return rightIntake.getPower();
@@ -39,7 +63,10 @@ public class Intake{
     }
 
     public double getVelocity(){
-        return intake.getVelocity();
+        return rightIntake.getVelocity();
     }
-
 }
+// intake + transfer
+//  servos on intake transfer
+// coding swerving of the CR servos
+// limelight with apriltag facing

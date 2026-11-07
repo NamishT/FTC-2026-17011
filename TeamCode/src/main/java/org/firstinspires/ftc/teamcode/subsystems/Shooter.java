@@ -32,7 +32,7 @@ public class Shooter {
         shooterN.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
 
         shooterP.setDirection(DcMotorSimple.Direction.FORWARD);
-        shooterN.setDirection(DcMotorSimple.Direction.REVERSE);
+        shooterN.setDirection(DcMotorSimple.Direction.FORWARD);
 
         shooterP.setVelocityPIDFCoefficients(P, I, D, F);
         shooterN.setVelocityPIDFCoefficients(P, I, D, F);
@@ -42,7 +42,7 @@ public class Shooter {
         if(power>1.0)power=1.0;
         if(power<-1.0) power = -1.0;
         shooterP.setPower(power);
-        //shooterN.setPower(power);
+        shooterN.setPower(power);
 
     }
     public void setVelocityP(double velocity){
