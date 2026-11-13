@@ -15,7 +15,7 @@ public class Intake{
     // 0.5 = closed 0 = open
     public static CRServo gateP;
     public static Servo gateN;
-    private static CRServo blockN;
+    public static CRServo blockN;
     private static CRServo flushPL;
     private static CRServo flushPR;
     public Intake(HardwareMap hardwareMap){

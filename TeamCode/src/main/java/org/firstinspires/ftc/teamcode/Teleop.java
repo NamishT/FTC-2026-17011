@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
 
+import static org.firstinspires.ftc.teamcode.subsystems.Intake.blockN;
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.gateN;
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.gateP;
 
@@ -49,7 +50,7 @@ public class Teleop extends OpMode {
 
 
     public static double velocityNTarget = 1000;
-    public static double velocityPTarget = 1000;
+    public static double velocityPTarget = 1250;
 
 
     // 0 = Blue, 1 = Red
@@ -233,14 +234,18 @@ public class Teleop extends OpMode {
 
         // Normal shooter velocity control
         if (shooter.getVelocityP() <
-                velocityPTarget * 0.98) {
+                velocityPTarget * 0.98 && shooter.getVelocityN() < velocityNTarget * .98) {
             gateN.setPosition(0.5);
             gateP.setPower(0);
+            blockN.setPower(-1);
+            //-1 closed, 1 open
             shooter.setPower(1);
         } else {
             gateN.setPosition(0);
             gateP.setPower(0);
+            blockN.setPower(1);
             shooter.setVelocityP(velocityPTarget);
+            shooter.setVelocityN(velocityNTarget);
         }
 
 
