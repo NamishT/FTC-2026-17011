@@ -39,37 +39,18 @@ public class RedSideTiltPath extends OpMode {
     private final PoseFactory poseFactory = PoseFactory.degrees();
 
 
-    private final Pose start =
-            poseFactory.of(10.5802, 28.6718, 0);
-
-
-    private final Pose path1 =
-            poseFactory.of(59.2027, 18.5309, 90);
-
-
-    private final Pose point2 =
-            poseFactory.of(14.6424, 4.9644, -121.6518);
-
-
-    private final Pose point2Control1 =
-            poseFactory.of(26.8252, 24.7272, 0);
-
-
-    private final Pose point3 =
-            poseFactory.of(2.5683, 4.7598, -179.0293);
-
-
-    private final Pose point4 =
-            poseFactory.of(57.1537, 120.3914, 270);
-
-
-    private final Pose point5 =
-            poseFactory.of(8.881, 96.0901, 90);
-
-
-    private final Pose point5Control1 =
-            poseFactory.of(9.5213, 71.3476, 0);
-
+    private final Pose start = poseFactory.of(10.5802, 28.6718, 0);
+    private final Pose path1 = poseFactory.of(59.2027, 18.5309, 90);
+    private final Pose point2 = poseFactory.of(14.6424, 4.9644, -121.6518);
+    private final Pose point2Control1 = poseFactory.of(26.8252, 24.7272, 0);
+    private final Pose point3 = poseFactory.of(2.5683, 4.7598, 0.9707);
+    private final Pose point4Start = poseFactory.of(2.5683, 4.7598, -90);
+    private final Pose point4 = poseFactory.of(57.1537, 120.3914, 270);
+    private final Pose point4Control1 = poseFactory.of(24.3694, 78.3654, 0);
+    private final Pose point4Control2 = poseFactory.of(24.959, 110.596, 0);
+    private final Pose point5Start = poseFactory.of(57.1537, 120.3914, 270);
+    private final Pose point5 = poseFactory.of(8.881, 96.0901, 90);
+    private final Pose point5Control1 = poseFactory.of(9.5213, 71.3476, 0);
 
     public static double VELOCITY_P_TARGET = 1000;
     public static double VELOCITY_N_TARGET = 1000;

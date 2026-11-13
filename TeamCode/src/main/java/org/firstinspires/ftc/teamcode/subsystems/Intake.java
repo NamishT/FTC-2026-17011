@@ -13,7 +13,7 @@ public class Intake{
     private static DcMotorEx rightIntake;
     private static DcMotorEx leftIntake;
     // 0.5 = closed 0 = open
-    public static CRServo gateP;
+    public static Servo gateP;
     public static Servo gateN;
     public static CRServo blockN;
     private static CRServo flushPL;
@@ -22,7 +22,7 @@ public class Intake{
         rightIntake = hardwareMap.get(DcMotorEx.class, "rightIntake");
         leftIntake = hardwareMap.get(DcMotorEx.class, "leftIntake");
 
-        gateP = hardwareMap.get(CRServo.class, "gateP");
+        gateP = hardwareMap.get(Servo.class, "gateP");
         gateN = hardwareMap.get(Servo.class, "gateN");
         blockN = hardwareMap.get(CRServo.class, "blockN");
 
@@ -41,12 +41,12 @@ public class Intake{
         leftIntake.setPower(power);
     }
     public void setPowerGateOpen() {
-        gateP.setPower(0);
+        gateP.setPosition(0);
         gateN.setPosition(0);
         blockN.setPower(1);
     }
     public void setPowerGateClose(){
-        gateP.setPower(0);
+        gateP.setPosition(0);
         gateN.setPosition(0.5);
         blockN.setPower(-1);
     }

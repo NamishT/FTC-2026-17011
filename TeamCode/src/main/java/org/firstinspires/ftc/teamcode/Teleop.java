@@ -5,10 +5,10 @@ import static org.firstinspires.ftc.teamcode.subsystems.Intake.blockN;
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.gateN;
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.gateP;
 
+
 import org.firstinspires.ftc.teamcode.subsystems.Drivebase;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
-
 
 
 import com.acmerobotics.dashboard.FtcDashboard;
@@ -29,6 +29,8 @@ import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 
+
+
 @Config
 @TeleOp(name = "Teleop")
 public class Teleop extends OpMode {
@@ -40,8 +42,6 @@ public class Teleop extends OpMode {
 
 
     private PinpointLocalizer localizer;
-
-
     private GoBildaPinpointDriver pinpoint;
 
 
@@ -49,12 +49,49 @@ public class Teleop extends OpMode {
     private Telemetry myTe;
 
 
+
+    // Shooter targets (ticks per second)
     public static double velocityNTarget = 1000;
     public static double velocityPTarget = 1250;
 
 
+
+    // Shooter recovery threshold
+    public static double shooterRecoveryThreshold = 0.98;
+
+
+
+    // Shooting gates
+    public static double gateNClosed = -0.5;
+    public static double gateNOpen = 0.0;
+
+
+    public static double gatePClosed = 0.0;
+    public static double gatePOpen = 1.0;
+
+
+
+    // Block N
+    public static double blockNClosed = 1.0;
+    public static double blockNOpen = -1.0;
+
+
+    private boolean blockNIsOpen = true;
+
+
+
+    // Intake
+    public static double intakePower = 1.0;
+    public static double triggerThreshold = 0.3;
+
+
+
+    // Alliance
     // 0 = Blue, 1 = Red
     private int alliance = 1;
+
+
+
 
 
     @Override
@@ -63,12 +100,14 @@ public class Teleop extends OpMode {
 
         localizer = new PinpointLocalizer(
                 hardwareMap,
-                Constants.localizerConfig
+                Constants.
+                        localizerConfig
         );
 
 
         pinpoint = hardwareMap.get(
                 GoBildaPinpointDriver.class,
+
                 "pinpoint"
         );
 
@@ -78,6 +117,7 @@ public class Teleop extends OpMode {
 
         myTe = new MultipleTelemetry(
                 dash.getTelemetry(),
+
                 telemetry
         );
 
@@ -87,198 +127,233 @@ public class Teleop extends OpMode {
         shooter = new Shooter(hardwareMap);
 
 
+
+// Initialize block N
+        blockNIsOpen = true;
+        updateBlockN();
+
+
+
+// Close shooting gates
+        closeGates();
+
+
+
+// Stop intake
+        intake.setPower(0);
+
+
         myTe.addLine("TeleOp Initialized");
         myTe.update();
     }
+
+
+
 
 
     @Override
     public void loop() {
 
 
-            // Alliance selection
-            /*
-            if (gamepad1.xWasPressed()) {
-
-                alliance = alliance == 1 ? 0 : 1;
-
-                drivebase.resetAim();
-            }
-            */
+        double drive = -gamepad1.left_stick_y;
+        double strafe = gamepad1.left_stick_x;
+        double turn = gamepad1.right_stick_x;
 
 
-            if(gamepad2.dpad_up) {
-                intake.setPowerGateOpen();
-            }
-            if(gamepad2.dpad_down) {
-                intake.setPowerGateClose();
-            }
-            if(gamepad2.dpad_left) {
-                intake.openFlush();
-            }
-            if(gamepad2.dpad_right) {
-                intake.closeFlush();
-            }
+        drivebase.drive(drive, strafe, turn);
 
 
 
-            /*
-            boolean aimRequested =
-                    gamepad1.right_trigger > 0.3 ||
-                            gamepad2.right_trigger > 0.3;
+// Triangle = Close block N
+        if (gamepad1.triangleWasPressed()) {
 
 
-            boolean reverseRequested =
-                    gamepad1.left_trigger > 0.3 ||
-                            gamepad2.left_trigger > 0.3;
+            blockNIsOpen = false;
+            updateBlockN();
+        }
 
 
-            if (!aimRequested) {
-                drivebase.resetAim();
-            }
+
+// Circle = Open block N
+        if (gamepad1.circleWasPressed()) {
 
 
-            if (aimRequested || reverseRequested) {
-
-                drivebase.stopRobot();
-
-            } else {
-            */
+            blockNIsOpen = true;
+            updateBlockN();
+        }
 
 
-            double drive = -gamepad1.left_stick_y;
-            double strafe = gamepad1.left_stick_x;
-            double turn = gamepad1.right_stick_x;
+        shooting_machine(false, false);
 
 
-            drivebase.drive(drive, strafe, turn);
-
-            // }
-
-
-            // Shooter, intake, and transfer
-            shooting_machine(false, false);
+        localizer.update();
+        pinpoint.update();
 
 
-            // Update localization
-            localizer.update();
-            pinpoint.update();
+        double heading = pinpoint.getPosition()
+                .getHeading(AngleUnit.DEGREES);
 
 
-            double heading = pinpoint.getPosition()
-                    .getHeading(AngleUnit.DEGREES);
 
 
-            // Telemetry
-            /*
-            myTe.addData("Alliance",
-                    alliance == 1 ? "RED" : "BLUE");
+        double velocityP = shooter.getVelocityP();
+        double velocityN = shooter.getVelocityN();
 
 
-            myTe.addData("AprilTag Found",
-                    drivebase.hasTarget());
+        boolean pReady =
+                velocityP >= velocityPTarget * shooterRecoveryThreshold;
 
 
-            myTe.addData("Camera Valid",
-                    drivebase.isCameraValid());
+        boolean nReady =
+                velocityN >= velocityNTarget * shooterRecoveryThreshold;
 
 
-            myTe.addData("AprilTag TX",
-                    drivebase.getTargetTX());
+        myTe.addData("Shooter P Velocity", velocityP);
+        myTe.addData("Shooter N Velocity", velocityN);
 
 
-            myTe.addData("Selected Tag ID",
-                    drivebase.getSelectedTagID());
+        myTe.addData("Target P Velocity", velocityPTarget);
+        myTe.addData("Target N Velocity", velocityNTarget);
 
 
-            myTe.addData("Aligned",
-                    drivebase.isAligned());
-            */
-            myTe.addData("Shooter Velocity",
-                    shooter.getVelocityP());
+        myTe.addData("P Ready", pReady);
+        myTe.addData("N Ready", nReady);
 
 
-            myTe.addData("Target Velocity",
-                    velocityPTarget);
+        myTe.addData("Shooter Ready", pReady && nReady);
 
 
-            myTe.addData("X",
-                    localizer.pose().x());
+        myTe.addData(
+                "Block N",
+                blockNIsOpen ? "OPEN" :
+                        "CLOSED"
+        );
 
 
-            myTe.addData("Y",
-                    localizer.pose().y());
-
-            myTe.addData("Heading",
-                    heading);
+        myTe.addData("X", localizer.pose().x());
+        myTe.addData("Y", localizer.pose().y());
+        myTe.addData("Heading", heading);
 
 
-            myTe.update();
+        myTe.update();
     }
 
 
-    public void shooting_machine(boolean aimRequested, boolean reverseRequested) {
+    public void shooting_machine(
+            boolean aimRequested,
+            boolean reverseRequested) {
 
 
-        /*
-        // Reverse controls
-        if (reverseRequested) {
+        double velocityP = shooter.getVelocityP();
+        double velocityN = shooter.getVelocityN();
 
-            shooter.setPower(-1.0);
-            intake.setPower(1.0);
+
+
+// Each motor maintains its own target.
+        // No switching between full power and velocity mode.
+        shooter.setVelocityP(velocityPTarget);
+        shooter.setVelocityN(velocityNTarget);
+
+
+        boolean pReady =
+                velocityP >= velocityPTarget * shooterRecoveryThreshold;
+
+
+        boolean nReady =
+                velocityN >= velocityNTarget * shooterRecoveryThreshold;
+
+
+        boolean shooterReady = pReady && nReady;
+
+
+        boolean shootRequested =
+                gamepad1.right_trigger > triggerThreshold;
+
+
+        boolean intakeForward =
+                gamepad1.right_bumper;
+
+
+        boolean intakeReverse =
+                gamepad1.left_trigger > triggerThreshold;
+
+
+        if (shootRequested && shooterReady) {
+
+
+            gateN.setPosition(gateNOpen);
+            gateP.setPosition(gatePOpen);
+
+
+            intake.setPower(-intakePower);
+
 
             return;
         }
-        */
 
 
-        // Normal shooter velocity control
-        if (shooter.getVelocityP() <
-                velocityPTarget * 0.98 && shooter.getVelocityN() < velocityNTarget * .98) {
-            gateN.setPosition(0.5);
-            gateP.setPower(0);
-            blockN.setPower(-1);
-            //-1 closed, 1 open
-            shooter.setPower(1);
+
+
+        if (intakeReverse) {
+
+
+            closeGates();
+
+
+            intake.setPower(intakePower);
+
+
+            return;
+        }
+
+
+
+
+        if (intakeForward) {
+
+
+            intake.setPower(-intakePower);
+
+
         } else {
-            gateN.setPosition(0);
-            gateP.setPower(0);
-            blockN.setPower(1);
-            shooter.setVelocityP(velocityPTarget);
-            shooter.setVelocityN(velocityNTarget);
-        }
 
-
-        /*
-        // Automatic AprilTag aiming
-        if (aimRequested) {
-
-            if (shooter.getVelocityP() >=
-                    velocityPTarget * 0.98) {
-                boolean aligned =
-                        drivebase.turnToAprilTag(alliance);
-                if (aligned &&
-                        drivebase.hasTarget()) {
-                } else {
-                }
-            } else {
-                drivebase.stopRobot();
-            }
 
             intake.setPower(0);
-            return;
         }
-        */
 
 
-        // Manual intake
-        if (gamepad1.right_bumper || gamepad2.right_bumper) {
-            intake.setPower(-1.0);
-        }
-        else {
-            intake.setPower(0);
+
+
+        closeGates();
+    }
+
+
+    private void updateBlockN() {
+
+
+        if (blockNIsOpen) {
+
+
+            blockN.setPower(blockNOpen);
+
+
+        } else {
+
+
+            blockN.setPower(blockNClosed);
         }
     }
+
+
+    private void closeGates() {
+
+
+        gateN.setPosition(gateNClosed);
+        gateP.setPosition(gatePClosed);
+    }
+
+
+
     @Override
     public void stop() {
 
@@ -287,6 +362,11 @@ public class Teleop extends OpMode {
 
 
         intake.setPower(0);
-        shooter.setPower(0);
+
+
+        shooter.stop();
+
+
+        closeGates();
     }
 }

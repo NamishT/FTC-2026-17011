@@ -52,15 +52,15 @@ public class Shooter {
     public void setVelocityN(double velocity){
         shooterN.setVelocity(velocity);
     }
-
-
-    public double getVelocityN(){
-        return shooterN.getVelocity();
-    }
     public double getVelocityP(){
         return shooterP.getVelocity();
     }
 
-
-
+    public double getVelocityN(){
+        return shooterN.getVelocity();
+    }
+    public void stop(){
+        shooterP.setPower(0);
+        shooterN.setPower(0);
+    }
 }
