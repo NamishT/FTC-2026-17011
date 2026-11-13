@@ -12,8 +12,9 @@ import com.qualcomm.robotcore.hardware.Servo;
 public class Intake{
     private static DcMotorEx rightIntake;
     private static DcMotorEx leftIntake;
-    private static CRServo gateP;
-    private static Servo gateN;
+    // 0.5 = closed 0 = open
+    public static CRServo gateP;
+    public static Servo gateN;
     private static CRServo blockN;
     private static CRServo flushPL;
     private static CRServo flushPR;
@@ -32,19 +33,21 @@ public class Intake{
     }
 
     public void setPower(double power){
-        if(power>1.0)power=1.0;
-        if(power<-1.0) power = -1.0;
+
+
+        power = Math.max(-1.0, Math.min(1.0, power));
+
         rightIntake.setPower(power);
         leftIntake.setPower(power);
     }
     public void setPowerGateOpen() {
-        gateP.setPower(1);
+        gateP.setPower(0);
         gateN.setPosition(0);
         blockN.setPower(1);
     }
-    public void setPowerGateClose() {
-        gateP.setPower(-1);
-        gateN.setPosition(1.0);
+    public void setPowerGateClose(){
+        gateP.setPower(0);
+        gateN.setPosition(0.5);
         blockN.setPower(-1);
     }
     public void openFlush(){
