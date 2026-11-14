@@ -29,8 +29,6 @@ import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
 
 
-
-
 @Config
 @TeleOp(name = "Teleop")
 public class Teleop extends OpMode {
@@ -49,26 +47,25 @@ public class Teleop extends OpMode {
     private Telemetry myTe;
 
 
-
-    // Shooter targets (ticks per second)
-    public static double velocityNTarget = 1000;
-    public static double velocityPTarget = 1250;
-
+    // Shooter targets
+    public static double velocityNTarget = 1100;
+    public static double velocityPTarget = 1130;
 
 
-    // Shooter recovery threshold
     public static double shooterRecoveryThreshold = 0.98;
 
 
-
     // Shooting gates
-    public static double gateNClosed = -0.5;
-    public static double gateNOpen = 0.0;
+    public static double gateNClosed = 0.5;
+    public static double gateNOpen = 0;
 
 
-    public static double gatePClosed = 0.0;
-    public static double gatePOpen = 1.0;
+    public static double gatePClosed = 0.5;
+    public static double gatePOpen = 0.0;
 
+
+    // NEW: Gate P software offset
+    public static double gatePOffset = 0.9;
 
 
     // Block N
@@ -79,19 +76,13 @@ public class Teleop extends OpMode {
     private boolean blockNIsOpen = true;
 
 
-
     // Intake
     public static double intakePower = 1.0;
     public static double triggerThreshold = 0.3;
 
 
-
     // Alliance
-    // 0 = Blue, 1 = Red
     private int alliance = 1;
-
-
-
 
 
     @Override
@@ -100,14 +91,12 @@ public class Teleop extends OpMode {
 
         localizer = new PinpointLocalizer(
                 hardwareMap,
-                Constants.
-                        localizerConfig
+                Constants.localizerConfig
         );
 
 
         pinpoint = hardwareMap.get(
                 GoBildaPinpointDriver.class,
-
                 "pinpoint"
         );
 
@@ -117,7 +106,6 @@ public class Teleop extends OpMode {
 
         myTe = new MultipleTelemetry(
                 dash.getTelemetry(),
-
                 telemetry
         );
 
@@ -127,28 +115,19 @@ public class Teleop extends OpMode {
         shooter = new Shooter(hardwareMap);
 
 
-
-// Initialize block N
         blockNIsOpen = true;
         updateBlockN();
 
 
-
-// Close shooting gates
         closeGates();
 
 
-
-// Stop intake
         intake.setPower(0);
 
 
         myTe.addLine("TeleOp Initialized");
         myTe.update();
     }
-
-
-
 
 
     @Override
@@ -163,21 +142,13 @@ public class Teleop extends OpMode {
         drivebase.drive(drive, strafe, turn);
 
 
-
-// Triangle = Close block N
         if (gamepad1.triangleWasPressed()) {
-
-
             blockNIsOpen = false;
             updateBlockN();
         }
 
 
-
-// Circle = Open block N
         if (gamepad1.circleWasPressed()) {
-
-
             blockNIsOpen = true;
             updateBlockN();
         }
@@ -192,8 +163,6 @@ public class Teleop extends OpMode {
 
         double heading = pinpoint.getPosition()
                 .getHeading(AngleUnit.DEGREES);
-
-
 
 
         double velocityP = shooter.getVelocityP();
@@ -225,9 +194,11 @@ public class Teleop extends OpMode {
 
         myTe.addData(
                 "Block N",
-                blockNIsOpen ? "OPEN" :
-                        "CLOSED"
+                blockNIsOpen ? "OPEN" : "CLOSED"
         );
+
+
+        myTe.addData("Gate P Offset", gatePOffset);
 
 
         myTe.addData("X", localizer.pose().x());
@@ -248,9 +219,6 @@ public class Teleop extends OpMode {
         double velocityN = shooter.getVelocityN();
 
 
-
-// Each motor maintains its own target.
-        // No switching between full power and velocity mode.
         shooter.setVelocityP(velocityPTarget);
         shooter.setVelocityN(velocityNTarget);
 
@@ -282,7 +250,7 @@ public class Teleop extends OpMode {
 
 
             gateN.setPosition(gateNOpen);
-            gateP.setPosition(gatePOpen);
+            setGatePPosition(gatePOpen);
 
 
             intake.setPower(-intakePower);
@@ -290,8 +258,6 @@ public class Teleop extends OpMode {
 
             return;
         }
-
-
 
 
         if (intakeReverse) {
@@ -307,21 +273,11 @@ public class Teleop extends OpMode {
         }
 
 
-
-
         if (intakeForward) {
-
-
             intake.setPower(-intakePower);
-
-
         } else {
-
-
             intake.setPower(0);
         }
-
-
 
 
         closeGates();
@@ -332,16 +288,27 @@ public class Teleop extends OpMode {
 
 
         if (blockNIsOpen) {
-
-
             blockN.setPower(blockNOpen);
-
-
         } else {
-
-
             blockN.setPower(blockNClosed);
         }
+    }
+
+
+    // NEW: Apply Gate P offset and keep position within 0-1
+    private void setGatePPosition(double position) {
+
+
+        double adjustedPosition = position + gatePOffset;
+
+
+        adjustedPosition = Math.max(
+                0.0,
+                Math.min(1.0, adjustedPosition)
+        );
+
+
+        gateP.setPosition(adjustedPosition);
     }
 
 
@@ -349,9 +316,8 @@ public class Teleop extends OpMode {
 
 
         gateN.setPosition(gateNClosed);
-        gateP.setPosition(gatePClosed);
+        setGatePPosition(gatePClosed);
     }
-
 
 
     @Override
