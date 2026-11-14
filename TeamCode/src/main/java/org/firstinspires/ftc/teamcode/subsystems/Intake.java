@@ -51,12 +51,12 @@ public class Intake{
         blockN.setPower(-1);
     }
     public void openFlush(){
-        flushPL.setPower(-1);
-        flushPR.setPower(-1);
+        flushPL.setPower(1);
+        //flushPR.setPower(-1);
     }
     public void closeFlush(){
-        flushPL.setPower(1);
-        flushPR.setPower(1);
+        flushPL.setPower(-1);
+        //flushPR.setPower(1);
     }
     public double getRightIntakePower(){
         return rightIntake.getPower();

@@ -74,6 +74,7 @@ public class Teleop extends OpMode {
 
 
     private boolean blockNIsOpen = true;
+    private boolean flushDown = false;
 
 
     // Intake
@@ -141,17 +142,16 @@ public class Teleop extends OpMode {
 
         drivebase.drive(drive, strafe, turn);
 
+        if(gamepad1.triangleWasPressed() && !flushDown) {
+            intake.closeFlush();
+            flushDown = true;
 
-        if (gamepad1.triangleWasPressed()) {
-            blockNIsOpen = false;
-            updateBlockN();
+        }
+        if (gamepad1.circleWasPressed() && flushDown) {
+            intake.openFlush();
+            flushDown = false;
         }
 
-
-        if (gamepad1.circleWasPressed()) {
-            blockNIsOpen = true;
-            updateBlockN();
-        }
 
 
         shooting_machine(false, false);
