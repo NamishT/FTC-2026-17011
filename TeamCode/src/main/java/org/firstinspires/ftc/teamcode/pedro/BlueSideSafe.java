@@ -150,7 +150,7 @@ public class BlueSideSafe extends OpMode {
 
 
         // Initialize Pedro
-        follower = Constants.create(hardwareMap);
+        //follower = Constants.create(hardwareMap);
 
 
         follower.setPose(start);

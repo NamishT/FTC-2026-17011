@@ -60,7 +60,7 @@ public class ExampleAuto extends OpMode {
         Localizer localizer = new PinpointLocalizer(hardwareMap, Constants.localizerConfig);
 
         // Create Pedro follower
-        follower = Constants.create(hardwareMap);
+        //follower = Constants.create(hardwareMap);
 
         // Set starting position
         follower.setPose(startPose);

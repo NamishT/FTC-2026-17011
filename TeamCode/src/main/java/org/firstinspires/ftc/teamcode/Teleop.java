@@ -1,9 +1,13 @@
 package org.firstinspires.ftc.teamcode;
 
 
+
+
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.blockN;
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.gateN;
 import static org.firstinspires.ftc.teamcode.subsystems.Intake.gateP;
+
+
 
 
 import org.firstinspires.ftc.teamcode.subsystems.Drivebase;
@@ -11,13 +15,19 @@ import org.firstinspires.ftc.teamcode.subsystems.Shooter;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 
 
+
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 
 
+
+
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+
+
 
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
@@ -25,8 +35,12 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 
+
+
 import com.pedropathing.revhub.localizers.PinpointLocalizer;
 import org.firstinspires.ftc.teamcode.pedro.Constants;
+
+
 
 
 @Config
@@ -34,17 +48,26 @@ import org.firstinspires.ftc.teamcode.pedro.Constants;
 public class Teleop extends OpMode {
 
 
+
+
     private Drivebase drivebase;
     private Shooter shooter;
     private Intake intake;
+
+
 
 
     private PinpointLocalizer localizer;
     private GoBildaPinpointDriver pinpoint;
 
 
+
+
     private FtcDashboard dash;
     private Telemetry myTe;
+
+
+
 
 
     // Shooter targets
@@ -52,7 +75,12 @@ public class Teleop extends OpMode {
     public static double velocityPTarget = 1130;
 
 
+
+
     public static double shooterRecoveryThreshold = 0.98;
+
+
+
 
 
     // Shooting gates
@@ -60,12 +88,20 @@ public class Teleop extends OpMode {
     public static double gateNOpen = 0;
 
 
+
+
     public static double gatePClosed = 0.5;
     public static double gatePOpen = 0.0;
 
 
+
+
+
     // NEW: Gate P software offset
     public static double gatePOffset = 0.9;
+
+
+
 
 
     // Block N
@@ -73,8 +109,13 @@ public class Teleop extends OpMode {
     public static double blockNOpen = -1.0;
 
 
+
+
     private boolean blockNIsOpen = true;
     private boolean flushDown = false;
+
+
+
 
 
     // Intake
@@ -82,33 +123,52 @@ public class Teleop extends OpMode {
     public static double triggerThreshold = 0.3;
 
 
+
+
+
     // Alliance
     private int alliance = 1;
+
+
+
 
 
     @Override
     public void init() {
 
 
+
+
         localizer = new PinpointLocalizer(
                 hardwareMap,
-                Constants.localizerConfig
+                Constants.
+                        localizerConfig
         );
+
+
 
 
         pinpoint = hardwareMap.get(
                 GoBildaPinpointDriver.class,
+
                 "pinpoint"
         );
+
+
 
 
         dash = FtcDashboard.getInstance();
 
 
+
+
         myTe = new MultipleTelemetry(
                 dash.getTelemetry(),
+
                 telemetry
         );
+
+
 
 
         intake = new Intake(hardwareMap);
@@ -116,14 +176,22 @@ public class Teleop extends OpMode {
         shooter = new Shooter(hardwareMap);
 
 
+
+
         blockNIsOpen = true;
         updateBlockN();
+
+
 
 
         closeGates();
 
 
+
+
         intake.setPower(0);
+
+
 
 
         myTe.addLine("TeleOp Initialized");
@@ -131,8 +199,13 @@ public class Teleop extends OpMode {
     }
 
 
+
+
+
     @Override
     public void loop() {
+
+
 
 
         double drive = -gamepad1.left_stick_y;
@@ -140,11 +213,15 @@ public class Teleop extends OpMode {
         double turn = gamepad1.right_stick_x;
 
 
+
+
         drivebase.drive(drive, strafe, turn);
+
 
         if(gamepad1.triangleWasPressed() && !flushDown) {
             intake.closeFlush();
             flushDown = true;
+
 
         }
         if (gamepad1.circleWasPressed() && flushDown) {
@@ -154,51 +231,79 @@ public class Teleop extends OpMode {
 
 
 
+
+
+
         shooting_machine(false, false);
+
+
 
 
         localizer.update();
         pinpoint.update();
 
 
+
+
         double heading = pinpoint.getPosition()
                 .getHeading(AngleUnit.DEGREES);
+
+
 
 
         double velocityP = shooter.getVelocityP();
         double velocityN = shooter.getVelocityN();
 
 
+
+
         boolean pReady =
                 velocityP >= velocityPTarget * shooterRecoveryThreshold;
+
+
 
 
         boolean nReady =
                 velocityN >= velocityNTarget * shooterRecoveryThreshold;
 
 
+
+
         myTe.addData("Shooter P Velocity", velocityP);
         myTe.addData("Shooter N Velocity", velocityN);
+
+
 
 
         myTe.addData("Target P Velocity", velocityPTarget);
         myTe.addData("Target N Velocity", velocityNTarget);
 
 
+
+
         myTe.addData("P Ready", pReady);
         myTe.addData("N Ready", nReady);
+
+
 
 
         myTe.addData("Shooter Ready", pReady && nReady);
 
 
+
+
         myTe.addData(
                 "Block N",
-                blockNIsOpen ? "OPEN" : "CLOSED"
+                blockNIsOpen ? "OPEN" :
+                        "CLOSED"
         );
 
 
+
+
         myTe.addData("Gate P Offset", gatePOffset);
+
+
 
 
         myTe.addData("X", localizer.pose().x());
@@ -206,8 +311,12 @@ public class Teleop extends OpMode {
         myTe.addData("Heading", heading);
 
 
+
+
         myTe.update();
     }
+
+
 
 
     public void shooting_machine(
@@ -215,62 +324,96 @@ public class Teleop extends OpMode {
             boolean reverseRequested) {
 
 
+
+
         double velocityP = shooter.getVelocityP();
         double velocityN = shooter.getVelocityN();
+
+
 
 
         shooter.setVelocityP(velocityPTarget);
         shooter.setVelocityN(velocityNTarget);
 
 
+
+
         boolean pReady =
                 velocityP >= velocityPTarget * shooterRecoveryThreshold;
+
+
 
 
         boolean nReady =
                 velocityN >= velocityNTarget * shooterRecoveryThreshold;
 
 
+
+
         boolean shooterReady = pReady && nReady;
+
+
 
 
         boolean shootRequested =
                 gamepad1.right_trigger > triggerThreshold;
 
 
+
+
         boolean intakeForward =
                 gamepad1.right_bumper;
+
+
 
 
         boolean intakeReverse =
                 gamepad1.left_trigger > triggerThreshold;
 
 
+
+
         if (shootRequested && shooterReady) {
+
+
 
 
             gateN.setPosition(gateNOpen);
             setGatePPosition(gatePOpen);
 
 
+
+
             intake.setPower(-intakePower);
+
+
 
 
             return;
         }
+
+
 
 
         if (intakeReverse) {
 
 
+
+
             closeGates();
+
+
 
 
             intake.setPower(intakePower);
 
 
+
+
             return;
         }
+
+
 
 
         if (intakeForward) {
@@ -280,11 +423,17 @@ public class Teleop extends OpMode {
         }
 
 
+
+
         closeGates();
     }
 
 
+
+
     private void updateBlockN() {
+
+
 
 
         if (blockNIsOpen) {
@@ -295,11 +444,18 @@ public class Teleop extends OpMode {
     }
 
 
+
+
+
     // NEW: Apply Gate P offset and keep position within 0-1
     private void setGatePPosition(double position) {
 
 
+
+
         double adjustedPosition = position + gatePOffset;
+
+
 
 
         adjustedPosition = Math.max(
@@ -308,11 +464,17 @@ public class Teleop extends OpMode {
         );
 
 
+
+
         gateP.setPosition(adjustedPosition);
     }
 
 
+
+
     private void closeGates() {
+
+
 
 
         gateN.setPosition(gateNClosed);
@@ -320,17 +482,28 @@ public class Teleop extends OpMode {
     }
 
 
+
+
+
     @Override
     public void stop() {
+
+
 
 
         drivebase.stopRobot();
 
 
+
+
         intake.setPower(0);
 
 
+
+
         shooter.stop();
+
+
 
 
         closeGates();
