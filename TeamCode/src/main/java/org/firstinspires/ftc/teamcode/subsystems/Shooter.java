@@ -17,9 +17,9 @@ public class Shooter {
     private static DcMotorEx shooterP;
     private static DcMotorEx shooterN;
 
-    public static double P = 10;
+    public static double P = 60; //will be tuned but most likely will be 60-80
     public static double I = 0;
-    public static double D = 0;
+    public static double D = .5;
     public static double F = 15;
 
     public Shooter(HardwareMap hardwareMap){
@@ -30,10 +30,6 @@ public class Shooter {
 
         shooterP.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
         shooterN.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
-
-        shooterP.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-        shooterN.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
-
 
         shooterP.setDirection(DcMotorSimple.Direction.FORWARD);
         shooterN.setDirection(DcMotorSimple.Direction.FORWARD);

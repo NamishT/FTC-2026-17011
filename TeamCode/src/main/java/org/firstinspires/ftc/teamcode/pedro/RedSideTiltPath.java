@@ -25,7 +25,7 @@ import static com.pedropathing.ivy.pedro.PedroCommands.follow;
 
 
 
-@Autonomous(name = "Red Side Tilt Auto", group = "Red")
+@Autonomous(name = "Red Side Tilt PATH", group = "Red")
 public class RedSideTiltPath extends OpMode {
 
 
@@ -196,7 +196,7 @@ public class RedSideTiltPath extends OpMode {
 
 
         // Initialize Pedro
-        //follower = Constants.create(hardwareMap);
+        follower = Constants.create(hardwareMap);
 
 
         follower.setPose(start);
