@@ -47,9 +47,7 @@ public class Teleop extends OpMode {
     public static double gateNOpen = 0.0;
 
     public static double gatePClosed = 0.5;
-    public static double gatePOpen = 0.0;
-    public static double gatePOffset = 0.9;
-
+    public static double gatePOpen = 0.25;
     public static double blockNClosed = 1.0;
     public static double blockNOpen = -1.0;
 
@@ -165,6 +163,8 @@ public class Teleop extends OpMode {
         myTe.addData("Y", follower.pose().y());
         myTe.addData("Shooter P Velocity", velocityP);
         myTe.addData("Shooter N Velocity", velocityN);
+        myTe.addData("Shooter P ACTUAL Velocity", shooter.getVelocityP());
+        myTe.addData("Shooter N Velocity", shooter.getVelocityN());
         myTe.addData("Shooter Ready", pReady && nReady);
         myTe.addData("Block N", blockNIsOpen ? "OPEN" : "CLOSED");
         myTe.update();
@@ -220,7 +220,7 @@ public class Teleop extends OpMode {
     }
 
     private void setGatePPosition(double position) {
-        double adjustedPosition = position + gatePOffset;
+        double adjustedPosition = position;
         adjustedPosition = Math.max(0.0, Math.min(1.0, adjustedPosition));
         gateP.setPosition(adjustedPosition);
     }

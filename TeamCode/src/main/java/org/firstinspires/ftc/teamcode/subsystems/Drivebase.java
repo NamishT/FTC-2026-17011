@@ -1,5 +1,3 @@
-
-
 package org.firstinspires.ftc.teamcode.subsystems;
 
 
@@ -8,7 +6,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 
-//import org.firstinspires.ftc.teamcode.subsystems.limeLightV2;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 
 public class Drivebase {
@@ -21,121 +21,108 @@ public class Drivebase {
 
 
     private GoBildaPinpointDriver pinpoint;
-//    private limeLightV2 lime;
 
 
-    // Dashboard tuning variables
-
-//    public static double MAX_TURN_POWER = 0.30;
-//
-//
-//    public static double FILTER_ALPHA = 0.25;
-//
-//
-//    public static double AIM_ENTER_TOLERANCE = 3.0;
-//    public static double AIM_EXIT_TOLERANCE = 4.0;
-//
-//
-//    // Aiming information
-//    private double filteredTX = 0;
-//    private double currentTX = 0;
-
-
-//    private boolean filterInitialized = false;
-//    private boolean targetFound = false;
-//    private boolean aligned = false;
-
-
-//    private int selectedTagID = -1;
+    // Global field offset so Pinpoint (0, 0, 0) maps to your Pedro start pose (56, 8, 90 deg)
+    private double startFieldX = 0.0;
+    private double startFieldY = 0.0;
+    private double startFieldHeadingDeg = 0.0;
 
 
     public Drivebase(HardwareMap hardwareMap) {
+        frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
+        backLeft = hardwareMap.get(DcMotor.class, "backLeft");
+        frontRight = hardwareMap.get(DcMotor.class, "frontRight");
+        backRight = hardwareMap.get(DcMotor.class, "backRight");
 
 
-        frontLeft = hardwareMap.get(
-                DcMotor.class, "frontLeft");
+        frontLeft.setDirection(DcMotor.Direction.FORWARD);
+        backLeft.setDirection(DcMotor.Direction.FORWARD);
+        frontRight.setDirection(DcMotor.Direction.REVERSE);
+        backRight.setDirection(DcMotor.Direction.REVERSE);
 
 
-        backLeft = hardwareMap.get(
-                DcMotor.class, "backLeft");
+        frontLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        frontRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backLeft.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        backRight.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
 
-        frontRight = hardwareMap.get(
-                DcMotor.class, "frontRight");
+        frontLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        frontRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backLeft.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        backRight.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
 
-        backRight = hardwareMap.get(
-                DcMotor.class, "backRight");
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
 
 
-        frontLeft.setDirection(
-                DcMotor.Direction.FORWARD);
-
-
-        backLeft.setDirection(
-                DcMotor.Direction.FORWARD);
-
-
-        frontRight.setDirection(
-                DcMotor.Direction.REVERSE);
-
-
-        backRight.setDirection(
-                DcMotor.Direction.REVERSE);
-
-
-        frontLeft.setZeroPowerBehavior(
-                DcMotor.ZeroPowerBehavior.BRAKE);
-
-
-        frontRight.setZeroPowerBehavior(
-                DcMotor.ZeroPowerBehavior.BRAKE);
-
-
-        backLeft.setZeroPowerBehavior(
-                DcMotor.ZeroPowerBehavior.BRAKE);
-
-
-        backRight.setZeroPowerBehavior(
-                DcMotor.ZeroPowerBehavior.BRAKE);
-
-
-        pinpoint  = hardwareMap.get(
-                GoBildaPinpointDriver.class, "pinpoint");
-
-
-//        lime = new limeLightV2(hardwareMap);
+        pinpoint.setOffsets(7.286581204632136, 0.25816200286384644, DistanceUnit.INCH);
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
+        pinpoint.setEncoderDirections(
+                GoBildaPinpointDriver.EncoderDirection.FORWARD,
+                GoBildaPinpointDriver.EncoderDirection.FORWARD
+        );
+        pinpoint.resetPosAndIMU();
     }
 
 
-    public void drive(
-            double drive,
-            double strafe,
-            double turn) {
+    public void updatePinpoint() {
+        pinpoint.update();
+    }
 
 
+    /**
+     * Resets Pinpoint at the robot's physical starting pose on the field (e.g., 56, 8, 90 deg).
+     */
+    public void setFieldStartPose(double fieldX, double fieldY, double fieldHeadingDeg) {
+        pinpoint.resetPosAndIMU();
+        this.startFieldX = fieldX;
+        this.startFieldY = fieldY;
+        this.startFieldHeadingDeg = fieldHeadingDeg;
+    }
+
+
+    /** Global Field X (inches) matching Pedro Pathing coordinates */
+    public double getFieldX() {
+        Pose2D pos = pinpoint.getPosition();
+        double localX = pos.getX(DistanceUnit.INCH);
+        double localY = pos.getY(DistanceUnit.INCH);
+        double rad = Math.toRadians(startFieldHeadingDeg);
+        return startFieldX + (localX * Math.cos(rad) - localY * Math.sin(rad));
+    }
+
+
+    /** Global Field Y (inches) matching Pedro Pathing coordinates */
+    public double getFieldY() {
+        Pose2D pos = pinpoint.getPosition();
+        double localX = pos.getX(DistanceUnit.INCH);
+        double localY = pos.getY(DistanceUnit.INCH);
+        double rad = Math.toRadians(startFieldHeadingDeg);
+        return startFieldY + (localX * Math.sin(rad) + localY * Math.cos(rad));
+    }
+
+
+    /** Global Field Heading (degrees, CCW positive) matching Pedro Pathing coordinates */
+    public double getFieldHeadingDeg() {
+        return normalizeAngleDeg(startFieldHeadingDeg + pinpoint.getHeading(AngleUnit.DEGREES));
+    }
+
+
+    // --- TeleOp Methods ---
+
+
+    public void drive(double drive, double strafe, double turn) {
         double denominator = Math.max(
-                Math.abs(drive) +
-                        Math.abs(strafe) +
-                        Math.abs(turn),
+                Math.abs(drive) + Math.abs(strafe) + Math.abs(turn),
                 1.0
         );
 
 
-        double frontLeftPower =
-                (drive + strafe + turn) / denominator;
-
-
-        double frontRightPower =
-                (drive - strafe - turn) / denominator;
-
-
-        double backLeftPower =
-                (drive - strafe + turn) / denominator;
-
-
-        double backRightPower =
-                (drive + strafe - turn) / denominator;
+        double frontLeftPower = (drive + strafe + turn) / denominator;
+        double frontRightPower = (drive - strafe - turn) / denominator;
+        double backLeftPower = (drive - strafe + turn) / denominator;
+        double backRightPower = (drive + strafe - turn) / denominator;
 
 
         frontLeft.setPower(frontLeftPower);
@@ -145,219 +132,117 @@ public class Drivebase {
     }
 
 
-//    public boolean turnToAprilTag(int allianceType) {
-
-
-//        double[][] tags = lime.limeLight(allianceType);
-
-
-//        double closestDistance = Double.MAX_VALUE;
-
-
-//        double targetAngle = 0;
-//        int newTagID = -1;
-
-
-//        targetFound = false;
-
-
-        // Find closest visible alliance tag
-//        for (double[] tag : tags) {
-//
-//
-//            if (tag == null || tag.length < 3) {
-//                continue;
-//            }
-//
-//
-//            if (tag[0] < closestDistance) {
-//
-//
-//                closestDistance = tag[0];
-
-
-//                targetAngle = tag[1];
-//
-//
-//                newTagID = (int) tag[2];
-//
-//
-//                targetFound = true;
-//            }
-//        }
-
-
-        // No AprilTag visible
-//        if (!targetFound) {
-//
-//
-//            currentTX = 0;
-//            selectedTagID = -1;
-//
-//
-//            filterInitialized = false;
-//            aligned = false;
-//
-//
-//            stopRobot();
-//
-//
-//            return false;
-//        }
-//
-//
-//        // Reset filter if the selected tag changes
-//        if (newTagID != selectedTagID) {
-//
-//
-//            selectedTagID = newTagID;
-//
-//
-//            filteredTX = targetAngle;
-//
-//
-//            filterInitialized = true;
-//
-//
-//            aligned = false;
-//        }
-//
-//
-//        // Smooth camera measurements
-//        if (!filterInitialized) {
-//
-//
-//            filteredTX = targetAngle;
-//            filterInitialized = true;
-//
-//
-//        } else {
-//
-//
-//            filteredTX =
-//                    FILTER_ALPHA * targetAngle +
-//                            (1.0 - FILTER_ALPHA) * filteredTX;
-//        }
-//
-//
-//        currentTX = filteredTX;
-//
-//
-//        // Alignment hysteresis
-//        if (aligned) {
-//
-//
-//            if (Math.abs(filteredTX) <= AIM_EXIT_TOLERANCE) {
-//
-//
-//                stopRobot();
-//
-//
-//                return true;
-//            }
-//
-//
-//            aligned = false;
-//        }
-//
-//
-//        // Enter alignment zone
-//        if (Math.abs(filteredTX) <= AIM_ENTER_TOLERANCE) {
-//
-//
-//            aligned = true;
-//
-//
-//            stopRobot();
-//
-//
-//            return true;
-//        }
-//
-//
-//        // Proportional controller
-//        double turnPower = (filteredTX<0) ? -1: 1;
-//
-//
-//        // Limit turning power
-//        turnPower = Math.max(
-//                -MAX_TURN_POWER,
-//                Math.min(MAX_TURN_POWER, turnPower)
-//        );
-
-
-//        turnRobot(turnPower);
-
-
-//        return false;
-//    }
+    public void driveFieldCentric(double drive, double strafe, double turn, double headingRadians) {
+        double rotX = strafe * Math.cos(-headingRadians) - drive * Math.sin(-headingRadians);
+        double rotY = strafe * Math.sin(-headingRadians) + drive * Math.cos(-headingRadians);
+        drive(rotY, rotX, turn);
+    }
 
 
     public void turnRobot(double power) {
-
-
-        // Same rotation convention as drive()
         frontLeft.setPower(power);
         backLeft.setPower(power);
-
-
         frontRight.setPower(-power);
         backRight.setPower(-power);
     }
 
 
     public void stopRobot() {
-
-
         frontLeft.setPower(0);
         backLeft.setPower(0);
-
-
         frontRight.setPower(0);
         backRight.setPower(0);
     }
 
 
     public void resetAim() {
-
-
         stopRobot();
-//
-//
-//        filterInitialized = false;
-//        targetFound = false;
-//        aligned = false;
-//
-//
-//        selectedTagID = -1;
-//
-//
-//        currentTX = 0;
-//        filteredTX = 0;
     }
 
 
-//    public double getTargetTX() {
-//        return currentTX;
-//    }
+    // --- Field-Coordinate Movement Methods ---
 
 
-//    public boolean hasTarget() {
-//        return targetFound;
-//    }
+    /**
+     * Turns in place to an exact global field heading (degrees, CCW positive).
+     */
+    public boolean turnToFieldHeading(double targetHeadingDeg, double maxPower) {
+        double error = normalizeAngleDeg(targetHeadingDeg - getFieldHeadingDeg());
 
 
-//    public boolean isAligned() {
-//        return aligned;
-//    }
+        if (Math.abs(error) <= 1.5) {
+            stopRobot();
+            return true;
+        }
 
 
-//    public int getSelectedTagID() {
-//        return selectedTagID;
-//    }
+        double rawPower = -error * 0.012;
+        double clamped = Math.max(-maxPower, Math.min(maxPower, rawPower));
+        if (Math.abs(clamped) < 0.14) {
+            clamped = Math.copySign(0.14, clamped);
+        }
 
 
-//    public boolean isCameraValid() {
-//        return lime.isCameraValid();
-//    }
+        drive(0, 0, clamped);
+        return false;
+    }
+
+
+    /**
+     * Drives directly to exact global field coordinates (targetX, targetY, targetHeadingDeg).
+     * Uses holonomic field-to-robot transformation so it goes straight to the exact Pedro point.
+     */
+    public boolean driveToFieldPose(double targetX, double targetY, double targetHeadingDeg, double maxPower) {
+        double currentX = getFieldX();
+        double currentY = getFieldY();
+        double currentHeadingDeg = getFieldHeadingDeg();
+
+
+        double errorX = targetX - currentX;
+        double errorY = targetY - currentY;
+        double distError = Math.hypot(errorX, errorY);
+        double headingError = normalizeAngleDeg(targetHeadingDeg - currentHeadingDeg);
+
+
+        if (distError <= 1.25 && Math.abs(headingError) <= 2.0) {
+            stopRobot();
+            return true;
+        }
+
+
+        // Smooth speed profile (decelerates cleanly over the final 10 inches)
+        double speed = Math.min(maxPower, Math.max(0.17, distError * 0.045));
+
+
+        double fieldVx = (distError > 0.001) ? (errorX / distError) * speed : 0.0;
+        double fieldVy = (distError > 0.001) ? (errorY / distError) * speed : 0.0;
+
+
+        // Rotate field vector into robot frame (+forward, +left)
+        double rad = Math.toRadians(currentHeadingDeg);
+        double robotForward = fieldVx * Math.cos(rad) + fieldVy * Math.sin(rad);
+        double robotLeft = -fieldVx * Math.sin(rad) + fieldVy * Math.cos(rad);
+
+
+        // Drivebase.drive takes (+drive = forward, +strafe = RIGHT), so negate robotLeft
+        double robotStrafeRight = -robotLeft;
+
+
+        // Turn power (-turn = CCW in Drivebase.drive)
+        double turnPower = Math.max(-0.32, Math.min(0.32, -headingError * 0.012));
+        if (Math.abs(headingError) > 2.0 && Math.abs(turnPower) < 0.12 && distError < 3.0) {
+            turnPower = Math.copySign(0.12, turnPower);
+        }
+
+
+        drive(robotForward, robotStrafeRight, turnPower);
+        return false;
+    }
+
+
+    private double normalizeAngleDeg(double angle) {
+        while (angle > 180.0) angle -= 360.0;
+        while (angle < -180.0) angle += 360.0;
+        return angle;
+    }
 }

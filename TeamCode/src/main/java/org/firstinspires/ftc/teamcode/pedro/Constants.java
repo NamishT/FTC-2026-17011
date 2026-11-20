@@ -22,10 +22,10 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 public class Constants {
 
     public static MecanumConfig drivetrainConfig = new MecanumConfig(c -> {
-        c.frontLeftName.set("frontLeft");
-        c.frontRightName.set("frontRight");
-        c.backLeftName.set("backLeft");
-        c.backRightName.set("backRight");
+        c.frontLeftName.set("backLeft");
+        c.frontRightName.set("backRight");
+        c.backLeftName.set("frontLeft");
+        c.backRightName.set("frontRight");
         c.frontLeftDirection.set(DcMotorSimple.Direction.FORWARD);
         c.frontRightDirection.set(DcMotorSimple.Direction.REVERSE);
         c.backLeftDirection.set(DcMotorSimple.Direction.FORWARD);
@@ -44,27 +44,35 @@ public class Constants {
     });
     public static ForesightConfig foresightConfig = new ForesightConfig(
             c -> {
-                Controller primaryTranslationalForward = Controller.proportional(0.422256932192749);
-                Controller secondaryTranslationalForward = Controller.proportional(0.15601265353219218);
-                Controller primaryTranslationalLateral = Controller.proportional(1.2404669296969288);
-                Controller secondaryTranslationalLateral = Controller.proportional(0.4583193846361971);
+                // Cut lateral gains down so small errors don't slam 100% strafe power
+                Controller primaryTranslationalForward = Controller.proportional(0.25);
+                Controller secondaryTranslationalForward = Controller.proportional(0.12);
+                Controller primaryTranslationalLateral = Controller.proportional(0.35);
+                Controller secondaryTranslationalLateral = Controller.proportional(0.18);
+
 
                 c.forwardTranslational.set(Controller.piecewise(secondaryTranslationalForward).put(2.5, primaryTranslationalForward));
                 c.strafeTranslational.set(Controller.piecewise(secondaryTranslationalLateral).put(2.5, primaryTranslationalLateral));
 
+
                 c.coast.set(Controller.proportionalFeedforward(0.013664912023065861));
                 c.brake.set(Controller.proportionalFeedforward(0.011615175219605981));
 
-                c.headingFeedback.set(Controller.proportional(10.05334462715152));
+
+                // Reduced from 10.05 -> 2.2 so heading holds smoothly without violent oscillation
+                c.headingFeedback.set(Controller.proportional(10.05));
                 c.headingBrakeCoefficients.set(Vector2D.cartesian(0.06975824916623499, 0.008267171697923747));
+
 
                 c.linearBrakeCoefficients.set(Matrix.diag(0.08802774110344731, 0.06546845515926333));
                 c.quadraticBrakeCoefficients.set(Matrix.diag(0.0021280310602220937, 0.0023379447569587234));
 
+
                 c.maxAchievableForwardVelocity.set(75.78939171742421);
                 c.maxAchievableStrafeVelocity.set(52.695086598626474);
                 c.naturalForwardDeceleration.set(34.585695644183474);
-                c.naturalStrafeDeceleration.set(72.48547770745415);
+                // Lowered from 72.48 -> 42.0 so it starts braking in time on strafes
+                c.naturalStrafeDeceleration.set(42.0);
             }
     );
     public static Follower create(HardwareMap hardwareMap) {
