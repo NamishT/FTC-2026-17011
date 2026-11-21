@@ -1,11 +1,13 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.pedro;
 
 
+import com.pedropathing.api.PoseFactory;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 
+import org.firstinspires.ftc.teamcode.pedro.OpModeStorage;
 import org.firstinspires.ftc.teamcode.subsystems.Drivebase;
 import org.firstinspires.ftc.teamcode.subsystems.Intake;
 import org.firstinspires.ftc.teamcode.subsystems.Shooter;
@@ -20,76 +22,127 @@ public class RedEncoderAuto extends OpMode {
     private Intake intake;
 
 
-    // Pedro Pathing Start & Park Coordinates
-    private static final double START_X = 56.0;
-    private static final double START_Y = 8.0;
-    private static final double START_H = 90.0;
+    // Field Coordinates (18"x18" robot -> 9.0" minimum clearance from walls)
 
 
-    // 90 deg clockwise from 90 deg = 0 deg
-    private static final double GARDEN_H = 0.0;
-    private static final double GARDEN_DISTANCE_IN = 49.33; // Distance from (56, 8) to (6.6715, 8.4861)
+    // Box 1: Start & Preload Shot (shooters facing Red Hive / +Y = 90 deg)
+    private static final double BOX1_X = 56.0, BOX1_Y = 9.0, BOX1_H = 90.0;
 
 
-    // Final Park Pose (point9 from Pedro file)
-    private static final double PARK_X = 5.4943;
-    private static final double PARK_Y = 109.291;
-    private static final double PARK_H = 90.0;
+    // Box 2: Clearance step off wall before turning 90 deg CW
+    private static final double BOX2_X = 44.0, BOX2_Y = 24.0, BOX2_H = 90.0;
+
+
+    // Box 3: Turned to 0 deg (shooters facing +X / up), hug wall into Garden corner
+    private static final double BOX3_PRE_GARDEN_X = 30.0, BOX3_Y = 9.5, BOX3_H = 0.0;
+    private static final double BOX3_GARDEN_X = 9.5;
+    private static final double BOX3_EXIT_X = 20.0, BOX3_EXIT_Y = 20.0; // Clear corner before heading to Box 4
+
+
+    // Box 4: Mid-field waypoint (faces 270 deg / right toward Red Hive)
+    private static final double BOX4_X = 36.0, BOX4_Y = 74.0, BOX4_H = 270.0;
+
+
+    // Box 5: Opposite Red Hive shot (270 deg)
+    private static final double BOX5_X = 60.0, BOX5_Y = 134.5, BOX5_H = 270.0;
+
+
+    // Box 6: Final Park (270 deg)
+    private static final double BOX6_X = 9.5, BOX6_Y = 109.3, BOX6_H = 270.0;
 
 
     // Drive Speeds
-    public static double DRIVE_POWER = 0.50;
-    public static double TURN_POWER = 0.32;
+    public static double DRIVE_POWER = 0.80;
+    public static double GARDEN_CREEP_POWER = 0.32;
+    public static double GARDEN_BACKUP_POWER = 0.75;
+    public static double TURN_POWER = 0.50;
 
 
     // Shooter & Intake Constants
     public static double VELOCITY_P_TARGET = 1130;
     public static double VELOCITY_N_TARGET = 1100;
-    public static double SHOOTER_READY_PERCENT = 0.98;
+    public static double SHOOTER_BANG_BANG_PERCENT = 0.98;
+    public static double SHOOTER_FEED_PERCENT = 0.93;
 
 
-    public static double SHOOT_TIME_MS = 2000;
-    public static double INTAKE_TIME_MS = 1500;
-    public static double MOVE_TIMEOUT_MS = 6500;
+    // Timers & Timeouts (ms)
+    public static double SHOOT_TIME_MS = 2600;
+    public static double GATE_CLOSE_DELAY_MS = 300;
+    public static double INTAKE_TIME_MS = 1200;
+    public static double MOVE_TIMEOUT_MS = 4000;
+    public static double GARDEN_IN_TIMEOUT_MS = 2800;
+    public static double GARDEN_OUT_TIMEOUT_MS = 2200;
+    public static double TURN_TIMEOUT_MS = 2200;
 
 
     private ElapsedTime actionTimer;
     private ElapsedTime moveTimer;
 
 
-    private double gardenTargetX = START_X;
-    private double gardenTargetY = START_Y;
-
-
     private enum AutoState {
-        START_SHOOT_SPINUP,
-        START_SHOOT_FEED,
+        // 1. Stay completely still at Box 1: spin up -> shoot -> close gate
+        BOX1_SHOOT_SPINUP,
+        BOX1_SHOOT_FEED,
+        BOX1_CLOSE_GATE,
 
 
-        TURN_90_CW,
-        DRIVE_TO_GARDEN,
-        GARDEN_INTAKE,
+        // 2. Move to Box 2 for turning clearance (intake running)
+        MOVE_TO_BOX2,
 
 
-        RETURN_TO_START,
-        GO_TO_PARK,
+        // 3. Turn to 0 deg, align to wall, drive into Garden (Box 3) with intake running
+        TURN_90_CW_AT_BOX2,
+        STRAFE_TO_WALL_BOX3,
+        DRIVE_INTO_GARDEN_BOX3,
+        GARDEN_SETTLE_INTAKE,
+
+
+        // 4. Clear corner and go directly to Box 4 (rotating to 270 deg)
+        CLEAR_GARDEN_CORNER,
+        DRIVE_TO_BOX4,
+
+
+        // 5. Drive to Box 5 (opposite side), stay still: spin up -> shoot -> close gate
+        DRIVE_TO_BOX5,
+        BOX5_SHOOT_SPINUP,
+        BOX5_SHOOT_FEED,
+        BOX5_CLOSE_GATE,
+
+
+        // 6. Drive to Box 6 (final park)
+        DRIVE_TO_BOX6_PARK,
 
 
         DONE
     }
 
 
-    private AutoState autoState = AutoState.START_SHOOT_SPINUP;
+    private AutoState autoState = AutoState.BOX1_SHOOT_SPINUP;
 
 
-    private boolean shooterReady() {
-        return shooter.getVelocityP() >= VELOCITY_P_TARGET * SHOOTER_READY_PERCENT
-                && shooter.getVelocityN() >= VELOCITY_N_TARGET * SHOOTER_READY_PERCENT;
+    private void saveEndPose() {
+        OpModeStorage.autonomousEndPose = PoseFactory.degrees().of(
+                drivebase.getFieldX(),
+                drivebase.getFieldY(),
+                drivebase.getFieldHeadingDeg()
+        );
+    }
+
+
+    private boolean shooterAtTarget() {
+        return shooter.getVelocityP() >= VELOCITY_P_TARGET * SHOOTER_BANG_BANG_PERCENT
+                && shooter.getVelocityN() >= VELOCITY_N_TARGET * SHOOTER_BANG_BANG_PERCENT;
+    }
+
+
+    private boolean feedReady() {
+        return shooter.getVelocityP() >= VELOCITY_P_TARGET * SHOOTER_FEED_PERCENT
+                && shooter.getVelocityN() >= VELOCITY_N_TARGET * SHOOTER_FEED_PERCENT;
     }
 
 
     private void runShooter() {
-        if (!shooterReady()) {
+        if (!shooterAtTarget()) {
             shooter.setPower(1.0);
         } else {
             shooter.setVelocityP(VELOCITY_P_TARGET);
@@ -99,7 +152,7 @@ public class RedEncoderAuto extends OpMode {
 
 
     private void feedWhenReady() {
-        if (shooterReady()) {
+        if (feedReady()) {
             intake.setPowerGateOpen();
             intake.setPower(-1.0);
         } else {
@@ -112,7 +165,7 @@ public class RedEncoderAuto extends OpMode {
     @Override
     public void init() {
         drivebase = new Drivebase(hardwareMap);
-        drivebase.setFieldStartPose(START_X, START_Y, START_H);
+        drivebase.setFieldStartPose(BOX1_X, BOX1_Y, BOX1_H);
 
 
         shooter = new Shooter(hardwareMap);
@@ -127,30 +180,32 @@ public class RedEncoderAuto extends OpMode {
         intake.closeFlush();
 
 
-        autoState = AutoState.START_SHOOT_SPINUP;
+        autoState = AutoState.BOX1_SHOOT_SPINUP;
+        saveEndPose();
 
 
-        telemetry.addLine("RED ODOM AUTO READY");
-        telemetry.addData("Start Pose", START_X + ", " + START_Y + " @ " + START_H);
+        telemetry.addLine("RED ODOM AUTO READY (DIAGRAM 1 -> 6)");
         telemetry.update();
     }
 
 
     @Override
     public void start() {
-        drivebase.setFieldStartPose(START_X, START_Y, START_H);
         moveTimer.reset();
-        autoState = AutoState.START_SHOOT_SPINUP;
+        actionTimer.reset();
+        autoState = AutoState.BOX1_SHOOT_SPINUP;
     }
 
 
     @Override
     public void loop() {
         drivebase.updatePinpoint();
+        saveEndPose();       // Continuously update pose for TeleOp field-centric transfer
+        intake.closeFlush(); // Always keep intake flush closed
 
 
-        // Only spin shooter during the initial preload shot
-        if (autoState == AutoState.START_SHOOT_SPINUP || autoState == AutoState.START_SHOOT_FEED) {
+        // Keep shooter spun up through Box 5 shot, then turn off while parking at Box 6
+        if (autoState != AutoState.DRIVE_TO_BOX6_PARK && autoState != AutoState.DONE) {
             runShooter();
         } else {
             shooter.setPower(0);
@@ -160,11 +215,12 @@ public class RedEncoderAuto extends OpMode {
         updateAuto();
 
 
-        telemetry.addData("Auto State", autoState);
-        telemetry.addData("X", drivebase.getFieldX());
-        telemetry.addData("Y", drivebase.getFieldY());
-        telemetry.addData("Heading", drivebase.getFieldHeadingDeg());
-        telemetry.addData("Shooter Ready", shooterReady());
+        telemetry.addData("State", autoState);
+        telemetry.addData("X", "%.1f", drivebase.getFieldX());
+        telemetry.addData("Y", "%.1f", drivebase.getFieldY());
+        telemetry.addData("Heading", "%.1f", drivebase.getFieldHeadingDeg());
+        telemetry.addData("MoveTimer (ms)", (int) moveTimer.milliseconds());
+        telemetry.addData("Feed Ready", feedReady());
         telemetry.update();
     }
 
@@ -173,111 +229,183 @@ public class RedEncoderAuto extends OpMode {
         switch (autoState) {
 
 
-            // 1. Shoot preloads at start position (56, 8, 90)
-            case START_SHOOT_SPINUP:
-                intake.closeFlush();
+            // --- 1. Stay Still & Preload Shoot at Box 1 ---
+            case BOX1_SHOOT_SPINUP:
+                drivebase.stopRobot();
                 intake.setPower(0);
                 intake.setPowerGateClose();
 
 
-                if (shooterReady()) {
+                if (shooterAtTarget()) {
                     actionTimer.reset();
-                    autoState = AutoState.START_SHOOT_FEED;
+                    autoState = AutoState.BOX1_SHOOT_FEED;
                 }
                 break;
 
 
-            case START_SHOOT_FEED:
-                intake.closeFlush();
+            case BOX1_SHOOT_FEED:
+                drivebase.stopRobot();
                 feedWhenReady();
 
 
                 if (actionTimer.milliseconds() >= SHOOT_TIME_MS) {
                     intake.setPower(0);
                     intake.setPowerGateClose();
-                    moveTimer.reset();
-                    autoState = AutoState.TURN_90_CW;
-                }
-                break;
-
-
-            // 2. Turn 90 deg clockwise (90 -> 0 deg)
-            case TURN_90_CW:
-                intake.closeFlush();
-                intake.setPower(0);
-                intake.setPowerGateClose();
-
-
-                if (drivebase.turnToFieldHeading(GARDEN_H, TURN_POWER) || moveTimer.milliseconds() >= 3000) {
-                    drivebase.stopRobot();
-                    // Compute straight-ahead target 49.33 in along current 0 deg heading
-                    double rad = Math.toRadians(GARDEN_H);
-                    gardenTargetX = drivebase.getFieldX() + GARDEN_DISTANCE_IN * Math.cos(rad);
-                    gardenTargetY = drivebase.getFieldY() + GARDEN_DISTANCE_IN * Math.sin(rad);
-                    moveTimer.reset();
-                    autoState = AutoState.DRIVE_TO_GARDEN;
-                }
-                break;
-
-
-            // 3. Drive straight to Garden pickup
-            case DRIVE_TO_GARDEN:
-                intake.closeFlush();
-                intake.setPower(0);
-                intake.setPowerGateClose();
-
-
-                if (drivebase.driveToFieldPose(gardenTargetX, gardenTargetY, GARDEN_H, DRIVE_POWER)
-                        || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
-                    drivebase.stopRobot();
-                    intake.setPowerGateClose();
-                    intake.setPower(-1.0);
                     actionTimer.reset();
-                    autoState = AutoState.GARDEN_INTAKE;
+                    autoState = AutoState.BOX1_CLOSE_GATE;
                 }
                 break;
 
 
-            // 4. Pick up from Garden
-            case GARDEN_INTAKE:
-                intake.closeFlush();
+            case BOX1_CLOSE_GATE:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (actionTimer.milliseconds() >= GATE_CLOSE_DELAY_MS) {
+                    moveTimer.reset();
+                    autoState = AutoState.MOVE_TO_BOX2;
+                }
+                break;
+
+
+            // --- 2. Move to Box 2 for Turning Clearance (Intake Running) ---
+            case MOVE_TO_BOX2:
                 intake.setPowerGateClose();
                 intake.setPower(-1.0);
-
-
-                if (actionTimer.milliseconds() >= INTAKE_TIME_MS) {
-                    intake.setPower(0);
-                    intake.setPowerGateClose();
-                    moveTimer.reset();
-                    autoState = AutoState.RETURN_TO_START;
-                }
-                break;
-
-
-            // 5. Return to start position (56, 8, 90) - no shooting
-            case RETURN_TO_START:
-                intake.closeFlush();
-                intake.setPower(0);
-                intake.setPowerGateClose();
-
-
-                if (drivebase.driveToFieldPose(START_X, START_Y, START_H, DRIVE_POWER)
+                if (drivebase.driveToFieldPose(BOX2_X, BOX2_Y, BOX2_H, DRIVE_POWER)
                         || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
                     drivebase.stopRobot();
                     moveTimer.reset();
-                    autoState = AutoState.GO_TO_PARK;
+                    autoState = AutoState.TURN_90_CW_AT_BOX2;
                 }
                 break;
 
 
-            // 6. Go directly from start position to final park pose (5.4943, 109.291, 90)
-            case GO_TO_PARK:
-                intake.closeFlush();
+            // --- 3. Turn to 0 deg, Align to Wall, Drive Into Garden (Box 3) ---
+            case TURN_90_CW_AT_BOX2:
+                intake.setPowerGateClose();
+                intake.setPower(-1.0);
+                if (drivebase.turnToFieldHeading(BOX3_H, TURN_POWER)
+                        || moveTimer.milliseconds() >= TURN_TIMEOUT_MS) {
+                    drivebase.stopRobot();
+                    moveTimer.reset();
+                    autoState = AutoState.STRAFE_TO_WALL_BOX3;
+                }
+                break;
+
+
+            case STRAFE_TO_WALL_BOX3:
+                intake.setPowerGateClose();
+                intake.setPower(-1.0);
+                if (drivebase.driveToFieldPose(BOX3_PRE_GARDEN_X, BOX3_Y, BOX3_H, DRIVE_POWER)
+                        || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
+                    drivebase.stopRobot();
+                    moveTimer.reset();
+                    autoState = AutoState.DRIVE_INTO_GARDEN_BOX3;
+                }
+                break;
+
+
+            case DRIVE_INTO_GARDEN_BOX3:
+                intake.setPowerGateClose();
+                intake.setPower(-1.0);
+                if (drivebase.driveToFieldPose(BOX3_GARDEN_X, BOX3_Y, BOX3_H, GARDEN_CREEP_POWER)
+                        || moveTimer.milliseconds() >= GARDEN_IN_TIMEOUT_MS) {
+                    drivebase.stopRobot();
+                    actionTimer.reset();
+                    autoState = AutoState.GARDEN_SETTLE_INTAKE;
+                }
+                break;
+
+
+            case GARDEN_SETTLE_INTAKE:
+                drivebase.stopRobot();
+                intake.setPowerGateClose();
+                intake.setPower(-1.0);
+                if (actionTimer.milliseconds() >= INTAKE_TIME_MS) {
+                    intake.setPower(0);
+                    moveTimer.reset();
+                    autoState = AutoState.CLEAR_GARDEN_CORNER;
+                }
+                break;
+
+
+            // --- 4. Clear Corner & Drive Directly to Box 4 (Rotating to 270 deg) ---
+            case CLEAR_GARDEN_CORNER:
+                if (drivebase.driveToFieldPose(BOX3_EXIT_X, BOX3_EXIT_Y, BOX3_H, GARDEN_BACKUP_POWER)
+                        || moveTimer.milliseconds() >= GARDEN_OUT_TIMEOUT_MS) {
+                    drivebase.stopRobot();
+                    moveTimer.reset();
+                    autoState = AutoState.DRIVE_TO_BOX4;
+                }
+                break;
+
+
+            case DRIVE_TO_BOX4:
+                if (drivebase.driveToFieldPose(BOX4_X, BOX4_Y, BOX4_H, DRIVE_POWER)
+                        || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
+                    drivebase.stopRobot();
+                    moveTimer.reset();
+                    autoState = AutoState.DRIVE_TO_BOX5;
+                }
+                break;
+
+
+            // --- 5. Drive to Opposite Side (Box 5), Stay Still & Shoot ---
+            case DRIVE_TO_BOX5:
+                if (drivebase.driveToFieldPose(BOX5_X, BOX5_Y, BOX5_H, DRIVE_POWER)
+                        || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
+                    drivebase.stopRobot();
+                    autoState = AutoState.BOX5_SHOOT_SPINUP;
+                }
+                break;
+
+
+            case BOX5_SHOOT_SPINUP:
+                drivebase.stopRobot();
                 intake.setPower(0);
                 intake.setPowerGateClose();
 
 
-                if (drivebase.driveToFieldPose(PARK_X, PARK_Y, PARK_H, DRIVE_POWER)
+                if (shooterAtTarget()) {
+                    actionTimer.reset();
+                    autoState = AutoState.BOX5_SHOOT_FEED;
+                }
+                break;
+
+
+            case BOX5_SHOOT_FEED:
+                drivebase.stopRobot();
+                feedWhenReady();
+
+
+                if (actionTimer.milliseconds() >= SHOOT_TIME_MS) {
+                    intake.setPower(0);
+                    intake.setPowerGateClose();
+                    actionTimer.reset();
+                    autoState = AutoState.BOX5_CLOSE_GATE;
+                }
+                break;
+
+
+            case BOX5_CLOSE_GATE:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (actionTimer.milliseconds() >= GATE_CLOSE_DELAY_MS) {
+                    moveTimer.reset();
+                    autoState = AutoState.DRIVE_TO_BOX6_PARK;
+                }
+                break;
+
+
+            // --- 6. Drive to Box 6 Park ---
+            case DRIVE_TO_BOX6_PARK:
+                if (drivebase.driveToFieldPose(BOX6_X, BOX6_Y, BOX6_H, DRIVE_POWER)
                         || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
                     drivebase.stopRobot();
                     autoState = AutoState.DONE;
@@ -290,7 +418,6 @@ public class RedEncoderAuto extends OpMode {
                 shooter.setPower(0);
                 intake.setPower(0);
                 intake.setPowerGateClose();
-                intake.closeFlush();
                 break;
         }
     }
@@ -298,6 +425,7 @@ public class RedEncoderAuto extends OpMode {
 
     @Override
     public void stop() {
+        saveEndPose();
         drivebase.stopRobot();
         shooter.setPower(0);
         intake.setPower(0);

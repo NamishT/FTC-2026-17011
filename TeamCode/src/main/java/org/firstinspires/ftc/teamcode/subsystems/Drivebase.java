@@ -23,13 +23,17 @@ public class Drivebase {
     private GoBildaPinpointDriver pinpoint;
 
 
-    // Global field offset so Pinpoint (0, 0, 0) maps to your Pedro start pose (56, 8, 90 deg)
     private double startFieldX = 0.0;
     private double startFieldY = 0.0;
     private double startFieldHeadingDeg = 0.0;
 
 
     public Drivebase(HardwareMap hardwareMap) {
+        this(hardwareMap, false);
+    }
+
+
+    public Drivebase(HardwareMap hardwareMap, boolean resetPinpoint) {
         frontLeft = hardwareMap.get(DcMotor.class, "frontLeft");
         backLeft = hardwareMap.get(DcMotor.class, "backLeft");
         frontRight = hardwareMap.get(DcMotor.class, "frontRight");
@@ -63,7 +67,11 @@ public class Drivebase {
                 GoBildaPinpointDriver.EncoderDirection.FORWARD,
                 GoBildaPinpointDriver.EncoderDirection.FORWARD
         );
-        pinpoint.resetPosAndIMU();
+
+
+        if (resetPinpoint) {
+            pinpoint.resetPosAndIMU();
+        }
     }
 
 
@@ -73,7 +81,7 @@ public class Drivebase {
 
 
     /**
-     * Resets Pinpoint at the robot's physical starting pose on the field (e.g., 56, 8, 90 deg).
+     * Call in init() ONLY (resets IMU while robot is completely still).
      */
     public void setFieldStartPose(double fieldX, double fieldY, double fieldHeadingDeg) {
         pinpoint.resetPosAndIMU();
@@ -106,6 +114,12 @@ public class Drivebase {
     /** Global Field Heading (degrees, CCW positive) matching Pedro Pathing coordinates */
     public double getFieldHeadingDeg() {
         return normalizeAngleDeg(startFieldHeadingDeg + pinpoint.getHeading(AngleUnit.DEGREES));
+    }
+
+
+    /** Raw Pinpoint IMU heading in radians (preserved from Auto into TeleOp) */
+    public double getRawHeadingRadians() {
+        return pinpoint.getHeading(AngleUnit.RADIANS);
     }
 
 
@@ -170,16 +184,16 @@ public class Drivebase {
         double error = normalizeAngleDeg(targetHeadingDeg - getFieldHeadingDeg());
 
 
-        if (Math.abs(error) <= 1.5) {
+        if (Math.abs(error) <= 2.5) {
             stopRobot();
             return true;
         }
 
 
-        double rawPower = -error * 0.012;
+        double rawPower = -error * 0.014;
         double clamped = Math.max(-maxPower, Math.min(maxPower, rawPower));
-        if (Math.abs(clamped) < 0.14) {
-            clamped = Math.copySign(0.14, clamped);
+        if (Math.abs(clamped) < 0.16) {
+            clamped = Math.copySign(0.16, clamped);
         }
 
 
@@ -190,7 +204,6 @@ public class Drivebase {
 
     /**
      * Drives directly to exact global field coordinates (targetX, targetY, targetHeadingDeg).
-     * Uses holonomic field-to-robot transformation so it goes straight to the exact Pedro point.
      */
     public boolean driveToFieldPose(double targetX, double targetY, double targetHeadingDeg, double maxPower) {
         double currentX = getFieldX();
@@ -204,38 +217,45 @@ public class Drivebase {
         double headingError = normalizeAngleDeg(targetHeadingDeg - currentHeadingDeg);
 
 
-        if (distError <= 1.25 && Math.abs(headingError) <= 2.0) {
+        boolean atPos = distError <= 1.75;
+        boolean atHeading = Math.abs(headingError) <= 2.5;
+
+
+        if (atPos && atHeading) {
             stopRobot();
             return true;
         }
 
 
-        // Smooth speed profile (decelerates cleanly over the final 10 inches)
-        double speed = Math.min(maxPower, Math.max(0.17, distError * 0.045));
+        double robotForward = 0.0;
+        double robotStrafeRight = 0.0;
 
 
-        double fieldVx = (distError > 0.001) ? (errorX / distError) * speed : 0.0;
-        double fieldVy = (distError > 0.001) ? (errorY / distError) * speed : 0.0;
+        // Only apply translation power if we haven't reached the position tolerance yet
+        if (!atPos) {
+            double speed = Math.min(maxPower, Math.max(0.22, distError * 0.05));
+            double fieldVx = (errorX / distError) * speed;
+            double fieldVy = (errorY / distError) * speed;
 
 
-        // Rotate field vector into robot frame (+forward, +left)
-        double rad = Math.toRadians(currentHeadingDeg);
-        double robotForward = fieldVx * Math.cos(rad) + fieldVy * Math.sin(rad);
-        double robotLeft = -fieldVx * Math.sin(rad) + fieldVy * Math.cos(rad);
-
-
-        // Drivebase.drive takes (+drive = forward, +strafe = RIGHT), so negate robotLeft
-        double robotStrafeRight = -robotLeft;
-
-
-        // Turn power (-turn = CCW in Drivebase.drive)
-        double turnPower = Math.max(-0.32, Math.min(0.32, -headingError * 0.012));
-        if (Math.abs(headingError) > 2.0 && Math.abs(turnPower) < 0.12 && distError < 3.0) {
-            turnPower = Math.copySign(0.12, turnPower);
+            double rad = Math.toRadians(currentHeadingDeg);
+            robotForward = fieldVx * Math.cos(rad) + fieldVy * Math.sin(rad);
+            double robotLeft = -fieldVx * Math.sin(rad) + fieldVy * Math.cos(rad);
+            robotStrafeRight = -robotLeft;
         }
 
 
-        drive(robotForward, robotStrafeRight, turnPower);
+        // Turn power (-turn = CCW in Drivebase.drive)
+        double turnPower = 0.0;
+        if (!atHeading) {
+            turnPower = Math.max(-0.35, Math.min(0.35, -headingError * 0.014));
+            if (Math.abs(turnPower) < 0.14 && distError < 4.0) {
+                turnPower = Math.copySign(0.14, turnPower);
+            }
+        }
+
+
+        drive(-robotForward, -robotStrafeRight, turnPower);
         return false;
     }
 
