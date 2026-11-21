@@ -26,7 +26,6 @@ public class BlueEncoderAuto extends OpMode {
 
 
     // 180-deg Field Rotation of Red Coordinates (144 - Red_X, 144 - Red_Y, Red_H + 180)
-    // Matches Blue Diagram: Top-left start -> Top-left Garden -> Mid-field (4) -> Top-right Park (6)
 
 
     // Box 1: Start & Preload Shot (shooters facing Blue Hive / -Y = 270 deg)
@@ -40,36 +39,41 @@ public class BlueEncoderAuto extends OpMode {
     // Box 3: Turned 90 deg CW to 180 deg (shooters facing -X / down), hug wall into Blue Garden corner
     private static final double BOX3_PRE_GARDEN_X = 114.0, BOX3_Y = 140.5, BOX3_H = 180.0;
     private static final double BOX3_GARDEN_X = 134.5;
-    private static final double BOX3_EXIT_X = 124.0, BOX3_EXIT_Y = 124.0; // Clear corner before heading to Box 4
+    private static final double BOX3_EXIT_X = 124.0, BOX3_EXIT_Y = 124.0;
 
 
-    // Box 4: Mid-field waypoint (faces 90 deg / left)
+    // Box 4: Flower (faces 90 deg -> stay here, shoot first, then intake)
     private static final double BOX4_X = 108.0, BOX4_Y = 70.0, BOX4_H = 90.0;
 
 
-    // Box 6: Final Park in top-right zone (goes straight from Box 4 to Box 6, skipping Box 5)
+    // Box 5: Opposite Blue Hive shot (180-deg mirror of Red Box 5: 144-60=84, 144-134.5=9.5, 270+180=90)
+    private static final double BOX5_X = 84.0, BOX5_Y = 9.5, BOX5_H = 90.0;
+
+
+    // Box 6: Final Park in top-right zone (90 deg)
     private static final double BOX6_X = 134.5, BOX6_Y = 34.7, BOX6_H = 90.0;
 
 
     // Drive Speeds
-    public static double DRIVE_POWER = 0.80;
-    public static double GARDEN_CREEP_POWER = 0.32;
-    public static double GARDEN_BACKUP_POWER = 0.75;
-    public static double TURN_POWER = 0.50;
+    public static double DRIVE_POWER = 0.95;
+    public static double GARDEN_CREEP_POWER = 0.38;
+    public static double GARDEN_BACKUP_POWER = 0.85;
+    public static double TURN_POWER = 0.65;
 
 
     // Shooter & Intake Constants
-    public static double VELOCITY_P_TARGET = 1130;
+    public static double VELOCITY_P_TARGET = 1030;
     public static double VELOCITY_N_TARGET = 1100;
     public static double SHOOTER_BANG_BANG_PERCENT = 0.98;
     public static double SHOOTER_FEED_PERCENT = 0.93;
 
 
     // Timers & Timeouts (ms)
-    public static double SHOOT_TIME_MS = 5000;
+    public static double SHOOT_TIME_MS = 3500;       // Trimmed from 6000 so all 3 shots + park fit in 30s
     public static double GATE_CLOSE_DELAY_MS = 300;
-    public static double INTAKE_TIME_MS = 1800;
-    public static double MOVE_TIMEOUT_MS = 4000;
+    public static double INTAKE_TIME_MS = 2000;
+    public static double FLOWER_INTAKE_TIME_MS = 2500;
+    public static double MOVE_TIMEOUT_MS = 3000;
     public static double GARDEN_IN_TIMEOUT_MS = 2800;
     public static double GARDEN_OUT_TIMEOUT_MS = 2200;
     public static double TURN_TIMEOUT_MS = 2200;
@@ -97,12 +101,23 @@ public class BlueEncoderAuto extends OpMode {
         GARDEN_SETTLE_INTAKE,
 
 
-        // 4. Clear corner and go directly to Box 4 (rotating to 90 deg)
+        // 4. Clear corner, drive to Flower (Box 4): stay -> shoot first -> intake
         CLEAR_GARDEN_CORNER,
         DRIVE_TO_BOX4,
+        BOX4_SHOOT_SPINUP,
+        BOX4_SHOOT_FEED,
+        BOX4_CLOSE_GATE,
+        BOX4_FLOWER_INTAKE,
 
 
-        // 6. Drive directly from Box 4 to Box 6 (final park)
+        // 5. Drive to Box 5 (opposite side), stay still: spin up -> shoot -> close gate
+        DRIVE_TO_BOX5,
+        BOX5_SHOOT_SPINUP,
+        BOX5_SHOOT_FEED,
+        BOX5_CLOSE_GATE,
+
+
+        // 6. Drive to Box 6 (final park)
         DRIVE_TO_BOX6_PARK,
 
 
@@ -174,9 +189,10 @@ public class BlueEncoderAuto extends OpMode {
 
 
         autoState = AutoState.BOX1_SHOOT_SPINUP;
+        saveEndPose();
 
 
-        telemetry.addLine("BLUE ODOM AUTO READY (1 -> 2 -> 3 -> 4 -> 6)");
+        telemetry.addLine("BLUE ODOM AUTO READY (1 -> 2 -> 3 -> 4 -> 5 -> 6)");
         telemetry.update();
     }
 
@@ -196,8 +212,8 @@ public class BlueEncoderAuto extends OpMode {
         intake.closeFlush();
 
 
-        // Only spin shooter during the initial preload shot at Box 1
-        if (autoState == AutoState.BOX1_SHOOT_SPINUP || autoState == AutoState.BOX1_SHOOT_FEED) {
+        // Keep shooter spun up through Box 5 shot, then turn off while parking at Box 6
+        if (autoState != AutoState.DRIVE_TO_BOX6_PARK && autoState != AutoState.DONE) {
             runShooter();
         } else {
             shooter.setPower(0);
@@ -324,7 +340,7 @@ public class BlueEncoderAuto extends OpMode {
                 break;
 
 
-            // --- 4. Clear Corner & Drive Directly to Box 4 (Rotating to 90 deg) ---
+            // --- 4. Clear Corner & Drive to Flower (Box 4): Stay, Shoot First, Then Intake ---
             case CLEAR_GARDEN_CORNER:
                 if (drivebase.driveToFieldPose(BOX3_EXIT_X, BOX3_EXIT_Y, BOX3_H, GARDEN_BACKUP_POWER)
                         || moveTimer.milliseconds() >= GARDEN_OUT_TIMEOUT_MS) {
@@ -339,13 +355,116 @@ public class BlueEncoderAuto extends OpMode {
                 if (drivebase.driveToFieldPose(BOX4_X, BOX4_Y, BOX4_H, DRIVE_POWER)
                         || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
                     drivebase.stopRobot();
+                    autoState = AutoState.BOX4_SHOOT_SPINUP;
+                }
+                break;
+
+
+            case BOX4_SHOOT_SPINUP:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (shooterAtTarget()) {
+                    actionTimer.reset();
+                    autoState = AutoState.BOX4_SHOOT_FEED;
+                }
+                break;
+
+
+            case BOX4_SHOOT_FEED:
+                drivebase.stopRobot();
+                feedWhenReady();
+
+
+                if (actionTimer.milliseconds() >= SHOOT_TIME_MS) {
+                    intake.setPower(0);
+                    intake.setPowerGateClose();
+                    actionTimer.reset();
+                    autoState = AutoState.BOX4_CLOSE_GATE;
+                }
+                break;
+
+
+            case BOX4_CLOSE_GATE:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (actionTimer.milliseconds() >= GATE_CLOSE_DELAY_MS) {
+                    actionTimer.reset();
+                    autoState = AutoState.BOX4_FLOWER_INTAKE;
+                }
+                break;
+
+
+            case BOX4_FLOWER_INTAKE:
+                drivebase.stopRobot();
+                intake.setPowerGateClose();
+                intake.setPower(-1.0);
+
+
+                if (actionTimer.milliseconds() >= FLOWER_INTAKE_TIME_MS) {
+                    intake.setPower(0);
+                    moveTimer.reset();
+                    autoState = AutoState.DRIVE_TO_BOX5;
+                }
+                break;
+
+
+            // --- 5. Drive to Opposite Side (Box 5), Stay Still & Shoot ---
+            case DRIVE_TO_BOX5:
+                if (drivebase.driveToFieldPose(BOX5_X, BOX5_Y, BOX5_H, DRIVE_POWER)
+                        || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
+                    drivebase.stopRobot();
+                    autoState = AutoState.BOX5_SHOOT_SPINUP;
+                }
+                break;
+
+
+            case BOX5_SHOOT_SPINUP:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (shooterAtTarget()) {
+                    actionTimer.reset();
+                    autoState = AutoState.BOX5_SHOOT_FEED;
+                }
+                break;
+
+
+            case BOX5_SHOOT_FEED:
+                drivebase.stopRobot();
+                feedWhenReady();
+
+
+                if (actionTimer.milliseconds() >= SHOOT_TIME_MS) {
+                    intake.setPower(0);
+                    intake.setPowerGateClose();
+                    actionTimer.reset();
+                    autoState = AutoState.BOX5_CLOSE_GATE;
+                }
+                break;
+
+
+            case BOX5_CLOSE_GATE:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (actionTimer.milliseconds() >= GATE_CLOSE_DELAY_MS) {
                     moveTimer.reset();
                     autoState = AutoState.DRIVE_TO_BOX6_PARK;
                 }
                 break;
 
 
-            // --- 6. Drive Directly from Box 4 to Box 6 Park ---
+            // --- 6. Drive to Box 6 Park ---
             case DRIVE_TO_BOX6_PARK:
                 if (drivebase.driveToFieldPose(BOX6_X, BOX6_Y, BOX6_H, DRIVE_POWER)
                         || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {

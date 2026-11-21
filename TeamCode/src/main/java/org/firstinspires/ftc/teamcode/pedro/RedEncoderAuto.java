@@ -22,11 +22,11 @@ public class RedEncoderAuto extends OpMode {
     private Intake intake;
 
 
-    // Field Coordinates (18"x18" robot -> 9.0" minimum clearance from walls)
+    // Field Coordinates
 
 
     // Box 1: Start & Preload Shot (shooters facing Red Hive / +Y = 90 deg)
-    private static final double BOX1_X = 56.0, BOX1_Y = 9.0, BOX1_H = 90.0;
+    private static final double BOX1_X = 56.0, BOX1_Y = 6.0, BOX1_H = 90.0;
 
 
     // Box 2: Clearance step off wall before turning 90 deg CW
@@ -34,12 +34,12 @@ public class RedEncoderAuto extends OpMode {
 
 
     // Box 3: Turned to 0 deg (shooters facing +X / up), hug wall into Garden corner
-    private static final double BOX3_PRE_GARDEN_X = 30.0, BOX3_Y = 9.5, BOX3_H = 0.0;
+    private static final double BOX3_PRE_GARDEN_X = 30.0, BOX3_Y = 0.0, BOX3_H = 0.0;
     private static final double BOX3_GARDEN_X = 9.5;
-    private static final double BOX3_EXIT_X = 20.0, BOX3_EXIT_Y = 20.0; // Clear corner before heading to Box 4
+    private static final double BOX3_EXIT_X = 20.0, BOX3_EXIT_Y = 20.0;
 
 
-    // Box 4: Mid-field waypoint (faces 270 deg / right toward Red Hive)
+    // Box 4: Flower (faces 270 deg -> stay here, shoot first, then intake)
     private static final double BOX4_X = 36.0, BOX4_Y = 74.0, BOX4_H = 270.0;
 
 
@@ -48,28 +48,28 @@ public class RedEncoderAuto extends OpMode {
 
 
     // Box 6: Final Park (270 deg)
-    private static final double BOX6_X = 9.5, BOX6_Y = 109.3, BOX6_H = 270.0;
+    private static final double BOX6_X = 9.5, BOX6_Y = 115.3, BOX6_H = 270.0;
 
 
     // Drive Speeds
-    public static double DRIVE_POWER = 0.80;
-    public static double GARDEN_CREEP_POWER = 0.32;
-    public static double GARDEN_BACKUP_POWER = 0.75;
-    public static double TURN_POWER = 0.50;
+    public static double DRIVE_POWER = 0.95;
+    public static double GARDEN_CREEP_POWER = 0.38;
+    public static double GARDEN_BACKUP_POWER = 0.85;
+    public static double TURN_POWER = 0.65;
 
 
     // Shooter & Intake Constants
-    public static double VELOCITY_P_TARGET = 1130;
+    public static double VELOCITY_P_TARGET = 1030;
     public static double VELOCITY_N_TARGET = 1100;
     public static double SHOOTER_BANG_BANG_PERCENT = 0.98;
     public static double SHOOTER_FEED_PERCENT = 0.93;
 
 
     // Timers & Timeouts (ms)
-    public static double SHOOT_TIME_MS = 2600;
+    public static double SHOOT_TIME_MS = 5000;
     public static double GATE_CLOSE_DELAY_MS = 300;
-    public static double INTAKE_TIME_MS = 1200;
-    public static double MOVE_TIMEOUT_MS = 4000;
+    public static double INTAKE_TIME_MS = 1800;
+    public static double MOVE_TIMEOUT_MS = 2000;
     public static double GARDEN_IN_TIMEOUT_MS = 2800;
     public static double GARDEN_OUT_TIMEOUT_MS = 2200;
     public static double TURN_TIMEOUT_MS = 2200;
@@ -97,9 +97,13 @@ public class RedEncoderAuto extends OpMode {
         GARDEN_SETTLE_INTAKE,
 
 
-        // 4. Clear corner and go directly to Box 4 (rotating to 270 deg)
+        // 4. Clear corner, drive to Flower (Box 4): stay -> shoot first -> intake
         CLEAR_GARDEN_CORNER,
         DRIVE_TO_BOX4,
+        BOX4_SHOOT_SPINUP,
+        BOX4_SHOOT_FEED,
+        BOX4_CLOSE_GATE,
+        BOX4_FLOWER_INTAKE,
 
 
         // 5. Drive to Box 5 (opposite side), stay still: spin up -> shoot -> close gate
@@ -332,7 +336,7 @@ public class RedEncoderAuto extends OpMode {
                 break;
 
 
-            // --- 4. Clear Corner & Drive Directly to Box 4 (Rotating to 270 deg) ---
+            // --- 4. Clear Corner & Drive to Flower (Box 4): Stay, Shoot First, Then Intake ---
             case CLEAR_GARDEN_CORNER:
                 if (drivebase.driveToFieldPose(BOX3_EXIT_X, BOX3_EXIT_Y, BOX3_H, GARDEN_BACKUP_POWER)
                         || moveTimer.milliseconds() >= GARDEN_OUT_TIMEOUT_MS) {
@@ -347,6 +351,59 @@ public class RedEncoderAuto extends OpMode {
                 if (drivebase.driveToFieldPose(BOX4_X, BOX4_Y, BOX4_H, DRIVE_POWER)
                         || moveTimer.milliseconds() >= MOVE_TIMEOUT_MS) {
                     drivebase.stopRobot();
+                    autoState = AutoState.BOX4_SHOOT_SPINUP;
+                }
+                break;
+
+
+            case BOX4_SHOOT_SPINUP:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (shooterAtTarget()) {
+                    actionTimer.reset();
+                    autoState = AutoState.BOX4_SHOOT_FEED;
+                }
+                break;
+
+
+            case BOX4_SHOOT_FEED:
+                drivebase.stopRobot();
+                feedWhenReady();
+
+
+                if (actionTimer.milliseconds() >= SHOOT_TIME_MS) {
+                    intake.setPower(0);
+                    intake.setPowerGateClose();
+                    actionTimer.reset();
+                    autoState = AutoState.BOX4_CLOSE_GATE;
+                }
+                break;
+
+
+            case BOX4_CLOSE_GATE:
+                drivebase.stopRobot();
+                intake.setPower(0);
+                intake.setPowerGateClose();
+
+
+                if (actionTimer.milliseconds() >= GATE_CLOSE_DELAY_MS) {
+                    actionTimer.reset();
+                    autoState = AutoState.BOX4_FLOWER_INTAKE;
+                }
+                break;
+
+
+            case BOX4_FLOWER_INTAKE:
+                drivebase.stopRobot();
+                intake.setPowerGateClose();
+                intake.setPower(-1.0);
+
+
+                if (actionTimer.milliseconds() >= INTAKE_TIME_MS) {
+                    intake.setPower(0);
                     moveTimer.reset();
                     autoState = AutoState.DRIVE_TO_BOX5;
                 }

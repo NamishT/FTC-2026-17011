@@ -41,12 +41,12 @@ public class Intake{
         leftIntake.setPower(power);
     }
     public void setPowerGateOpen() {
-        gateP.setPosition(0);
+        gateP.setPosition(0.25);
         gateN.setPosition(0);
         blockN.setPower(1);
     }
     public void setPowerGateClose(){
-        gateP.setPosition(0);
+        gateP.setPosition(0.5);
         gateN.setPosition(0.5);
         blockN.setPower(-1);
     }
